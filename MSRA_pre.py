@@ -36,9 +36,9 @@ class Read_MSRA(object):
             frame_num = int(f.readline())
         # 跳过第一行，不然会显示numpy 列对不上，第一行只有 frame_num 一个数值，比下面的少
         truth_data = np.loadtxt(ges_dir, skiprows=1)
-        ground_truth = truth_data.reshape(3, 21, frame_num)
+        ground_truth = truth_data.reshape(frame_num, 21, 3)
         # 因为深度图z是正的，但是label里面z却是负数
-        ground_truth[2, :, :] = -ground_truth[2, :, :]
+        ground_truth[:, :, 2] = -ground_truth[:, :, 2]
 
         return frame_num, ground_truth
 
