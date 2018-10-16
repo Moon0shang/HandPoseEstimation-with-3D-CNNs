@@ -29,6 +29,9 @@ class Read_MSRA(object):
                 save_ges_dir = os.path.join(
                     save_dir, subject_names[sub], gesture_names[ges])
                 os.mkdir(save_ges_dir)
+                [jnt_xyz, hand_points] = self.read_depth_bin(
+                    ges_dir, sub, ges, ground_truth)
+                self.save_mat(save_ges_dir, jnt_xyz, hand_points)
 
     def read_ground_truth(self, ges_dir):
 
@@ -53,10 +56,12 @@ class Read_MSRA(object):
         for frm in range(num):
             if not valid[frm]:
                 continue
-
+            hand_points = self.read_conv_bin(ges_dir, frm)
             jnt_xyz = np.squeeze(ground_truth[frm, :, :])
 
-            # read binary files
+        return jnt_xyz, hand_points
+
+        # read binary files
     def read_conv_bin(self, ges_dir, frm):
 
         with open(ges_dir + '/' + str('%06d' % frm) + '_depth.bin', 'rb') as f:
@@ -96,3 +101,10 @@ class Read_MSRA(object):
                     valid_idx.append(num)
 
             hand_points = hand_3d[valid_idx, :]
+
+        return hand_points
+
+    def save_mat(self, save_ges_dir, jnt_xyz, hand_points):
+
+        sio.savemat(save_ges_dir+'jnt_xyz.mat', jnt_xyz,)
+        sio.savemat(save_ges_dir+'hand_points.mat', hand_points)
