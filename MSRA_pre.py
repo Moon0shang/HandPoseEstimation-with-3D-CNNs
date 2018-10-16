@@ -54,42 +54,45 @@ class Read_MSRA(object):
             if not valid[frm]:
                 continue
 
+            jnt_xyz = np.squeeze(ground_truth[frm, :, :])
+
             # read binary files
-            with open(ges_dir + '/' + str('%06d' % frm) + '_depth.bin', 'r') as f:
-                img_width = struct.unpack('I', f.read(4))[0]
-                img_height = struct.unpack('I', f.read(4))[0]
+    def read_conv_bin(self, ges_dir, frm):
 
-                bb_left = struct.unpack('I', f.read(4))[0]
-                bb_top = struct.unpack('I', f.read(4))[0]
-                bb_right = struct.unpack('I', f.read(4))[0]
-                bb_bottom = struct.unpack('I', f.read(4))[0]
-                bb_width = bb_right - bb_left
-                bb_height = bb_bottom - bb_top
+        with open(ges_dir + '/' + str('%06d' % frm) + '_depth.bin', 'rb') as f:
+            img_width = struct.unpack('I', f.read(4))[0]
+            img_height = struct.unpack('I', f.read(4))[0]
 
-                valid_pixel_num = bb_width * bb_height
+            bb_left = struct.unpack('I', f.read(4))[0]
+            bb_top = struct.unpack('I', f.read(4))[0]
+            bb_right = struct.unpack('I', f.read(4))[0]
+            bb_bottom = struct.unpack('I', f.read(4))[0]
+            bb_width = bb_right - bb_left
+            bb_height = bb_bottom - bb_top
 
-                hand_depth = struct.unpack(
-                    'f' * valid_pixel_num, f.read(valid_pixel_num))
-                hand_depth = np.array(hand_depth, dtype=np.float32)
-                hand_depth = hand_depth.reshape(bb_width, bb_height)
-                hand_depth = hand_depth.transpose()
+            valid_pixel_num = bb_width * bb_height
 
-                fFocal_msra = 241.42
-                hand_3d = np.zeros((valid_pixel_num, 3))
-                for ii in bb_height:
-                    for jj in bb_width:
-                        idx = jj * bb_height + ii+1
-                        hand_3d[idx, 0] = -(img_width/2 - (jj + bb_left-1)
-                                            ) * hand_depth(ii, jj)/fFocal_msra
-                        hand_3d[idx, 1] = -(img_height/2 - (ii + bb_top-1)
-                                            ) * hand_depth(ii, jj) / fFocal_msra
-                        hand_3d[idx, 2] = hand_depth(ii, jj)
+            hand_depth = struct.unpack(
+                'f' * valid_pixel_num, f.read(valid_pixel_num))
+            hand_depth = np.array(hand_depth, dtype=np.float32)
+            hand_depth = hand_depth.reshape(bb_width, bb_height)
+            hand_depth = hand_depth.transpose()
 
-                valid_idx = []
+            fFocal_msra = 241.42
+            hand_3d = np.zeros((valid_pixel_num, 3))
+            for ii in bb_height:
+                for jj in bb_width:
+                    idx = jj * bb_height + ii+1
+                    hand_3d[idx, 0] = -(img_width/2 - (jj + bb_left-1)
+                                        ) * hand_depth(ii, jj)/fFocal_msra
+                    hand_3d[idx, 1] = -(img_height/2 - (ii + bb_top-1)
+                                        ) * hand_depth(ii, jj) / fFocal_msra
+                    hand_3d[idx, 2] = hand_depth(ii, jj)
 
-                for num in range(valid_pixel_num):
-                    if any(hand_3d[num, :]):
-                        valid_idx.append(num)
+            valid_idx = []
 
-                hand_points = hand_3d[valid_idx, :]
-                jnt_xyz = np.squeeze(gt_wld[frm_idx, :, :])
+            for num in range(valid_pixel_num):
+                if any(hand_3d[num, :]):
+                    valid_idx.append(num)
+
+            hand_points = hand_3d[valid_idx, :]
