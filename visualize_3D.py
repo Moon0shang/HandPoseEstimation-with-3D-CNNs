@@ -1,4 +1,5 @@
 import numpy as np
+import scipy.io as sio
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
@@ -27,3 +28,9 @@ def visualize(hand_points):
     ax.set_ylabel('Y Label')
     ax.set_zlabel('Z Label')
     plt.show()
+
+
+if __name__ == '__main__':
+    h = sio.loadmat('./results/P0/1/points000.mat')
+    h = h['points000']
+    visualize(h)
