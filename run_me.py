@@ -24,3 +24,9 @@ def show_points(file_dir):
 def run_TSDF():
 
     pass
+
+
+if __name__ == '__main__':
+
+    select_file_dir = './results/P0/1/points000.mat'
+    show_points(select_file_dir)
