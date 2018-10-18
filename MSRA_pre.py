@@ -4,8 +4,10 @@ import scipy.io as sio
 import numpy as np
 import struct
 
-
-dataset_dir = '/home/x/DB/MSRA HandPoseDataset/cvpr15_MSRAHandGestureDB/'
+if os.name == 'nt':
+    dataset_dir= 'D:/DB/MSRA HandPoseDataset/cvpr15_MSRAHandGestureDB'
+else:
+    dataset_dir = '/home/x/DB/MSRA HandPoseDataset/cvpr15_MSRAHandGestureDB/'
 save_dir = './results'
 
 subject_names = ['P0', 'P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8']
