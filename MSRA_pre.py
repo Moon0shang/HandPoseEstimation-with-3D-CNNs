@@ -29,13 +29,19 @@ class Read_MSRA(object):
 
     def read_all(self):
 
+        try:
+            os.mkdir(save_dir)
+        except:
+            print('results already exist!')
+        else:
+            print('create directory results')
+
         for sub in range(len(subject_names)):
 
             try:
-                os.mkdir(save_dir)
                 os.mkdir(os.path.join(save_dir, subject_names[sub]))
             except:
-                print('1st directory already exist!')
+                print('%s already exist!' % subject_names[sub])
             else:
                 print('create directory %s' % subject_names[sub])
 
@@ -49,20 +55,21 @@ class Read_MSRA(object):
 
                 # read ground truth
                 [ground_truth, frame_num] = self.read_ground_truth(ges_dir)
+
                 # create save files
                 try:
                     os.mkdir(self.save_ges_dir)
                 except:
-                    print('2nd directory already exist!')
+                    print('%s already exist!' %
+                          (subject_names[sub]+'/'+gesture_names[ges]))
                 else:
                     print('create directory %s' %
-                          subject_names[sub]+'/'+gesture_names[ges])
+                          (subject_names[sub]+'/'+gesture_names[ges]))
 
                 [jnt_xyz, hand_points] = self.read_depth_bin(
                     ges_dir, frame_num, sub, ges, ground_truth)
-                self.save_mat(jnt_xyz, hand_points)
 
-        return hand_points
+        return jnt_xyz, hand_points
 
     def read_ground_truth(self, ges_dir):
 
@@ -81,7 +88,6 @@ class Read_MSRA(object):
     def read_depth_bin(self, ges_dir, frame_num, sub, ges, ground_truth):
 
         num = 0
-        sample_num = 1024
         for i in os.listdir(ges_dir):
             if os.path.splitext(i)[1] == '.bin':
                 num += 1
@@ -92,9 +98,12 @@ class Read_MSRA(object):
             if not valid[frm]:
                 continue
             hand_points = self.read_conv_bin(ges_dir, frm)
+            self.save_mat('points%03d' % frm, hand_points)
             jnt_xyz = np.squeeze(ground_truth[frm, :, :])
 
-            # hand_points_3d[frm, :, :] = hand_points
+        self.save_mat('joint', jnt_xyz)
+
+        # hand_points_3d[frm, :, :] = hand_points
 
         return jnt_xyz, hand_points  # hand_points_3d
 
@@ -117,27 +126,40 @@ class Read_MSRA(object):
                 'f'*valid_pixel_num, f.read(4*valid_pixel_num))
 
         hand_depth = np.array(hand_depth, dtype=np.float32)
-        hand_depth = hand_depth.reshape(bb_width, bb_height)
-        hand_depth = hand_depth.transpose()
+        # hand_depth = hand_depth.reshape(bb_height, bb_width)
+        # hand_depth = hand_depth.transpose()
 
-        np.savetxt(self.save_ges_dir + '/depth.txt', hand_depth)
+        # np.savetxt(self.save_ges_dir + '/depth.txt', hand_depth)
 
         fFocal_msra = 241.42
         hand_3d = np.zeros((valid_pixel_num, 3))
+        h_matrix = [i for i in range(bb_height)]
+        w_matrix = [i for i in range(bb_width)]
+        hand_3d[:, 0] = np.multiply(
+            (w_matrix - img_width / 2), hand_depth) / fFocal_msra
+        hand_3d[:, 1] = np.multiply(
+            (h_matrix - img_height / 2), hand_depth) / fFocal_msra
+        hand_3d[:, 2] = hand_depth
+        '''
+        previously method using loop which waste more time
         for ii in range(bb_height):
             for jj in range(bb_width):
-                '''
-                0 < ii < bb_height - 1   
-                0 < jj < bb_weight - 1
-                0 < idx < h * w -1
-                '''
-                idx = jj * bb_height + ii
-                hand_3d[idx, 0] = -(img_width/2 - jj - bb_left) * \
+                
+                # 0 < ii < bb_height - 1   
+                # 0 < jj < bb_weight - 1
+                # 0 < idx < h * w -1
+                
+                idx = ii * bb_width + jj
+                # x lable
+                hand_3d[idx, 0] = (jj - img_width/2 + bb_left) * \
                     hand_depth[ii, jj] / fFocal_msra
-                hand_3d[idx, 1] = -(img_height/2 - ii - bb_top) * \
+                # y lable
+                hand_3d[idx, 1] = (ii - img_height/2 + bb_top) * \
                     hand_depth[ii, jj] / fFocal_msra
+                # z lable
                 hand_3d[idx, 2] = hand_depth[ii, jj]
-        np.savetxt(self.save_ges_dir+'/depth_3d.txt', hand_3d)
+        # np.savetxt(self.save_ges_dir+'/depth_3d.txt', hand_3d)
+        '''
 
         valid_idx = []
 
@@ -147,15 +169,13 @@ class Read_MSRA(object):
 
         hand_points = hand_3d[valid_idx, :]
 
-        np.savetxt(self.save_ges_dir + '/v_3D.txt', hand_points)
+        # np.savetxt(self.save_ges_dir + '/v_3D.txt', hand_points)
 
         return hand_points
 
-    def save_mat(self,  jnt_xyz, hand_points):
+    def save_mat(self, name, datas):
 
-        sio.savemat(self.save_ges_dir+'/jnt_xyz.mat', {'joint': jnt_xyz})
-        sio.savemat(self.save_ges_dir+'/hand_points.mat',
-                    {'hand_points': hand_points})
+        sio.savemat(self.save_ges_dir+'/%s.mat' % name, {name: datas})
 
 
 if __name__ == '__main__':
