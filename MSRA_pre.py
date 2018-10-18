@@ -125,30 +125,45 @@ class Read_MSRA(object):
             hand_depth = struct.unpack(
                 'f'*valid_pixel_num, f.read(4*valid_pixel_num))
 
+        fFocal_msra = 241.42
+        hand_3d = np.zeros((valid_pixel_num, 3))
+
         hand_depth = np.array(hand_depth, dtype=np.float32)
-        # hand_depth = hand_depth.reshape(bb_height, bb_width)
+
+        hand_3d[:, 2] = hand_depth
+
+        hand_depth = hand_depth.reshape(bb_height, bb_width)
         # hand_depth = hand_depth.transpose()
 
         # np.savetxt(self.save_ges_dir + '/depth.txt', hand_depth)
 
-        fFocal_msra = 241.42
-        hand_3d = np.zeros((valid_pixel_num, 3))
-        h_matrix = [i for i in range(bb_height)]
-        w_matrix = [i for i in range(bb_width)]
+        """ 
+        can not for use
+        h_matrix = np.array([i for i in range(bb_height)], dtype=np.float32)
+        w_matrix = np.array([i for i in range(bb_width)], dtype=np.float32)
         hand_3d[:, 0] = np.multiply(
-            (w_matrix - img_width / 2), hand_depth) / fFocal_msra
+            (w_matrix - (img_width / 2)), hand_depth) / fFocal_msra
         hand_3d[:, 1] = np.multiply(
-            (h_matrix - img_height / 2), hand_depth) / fFocal_msra
+            (h_matrix - (img_height / 2)), hand_depth) / fFocal_msra
         hand_3d[:, 2] = hand_depth
-        '''
-        previously method using loop which waste more time
-        for ii in range(bb_height):
+        """
+        h_matrix = np.array([i for i in range(bb_height)], dtype=np.float32)
+        w_matrix = np.array([i for i in range(bb_width)], dtype=np.float32)
+        for h in range(bb_height):
+            hand_3d[(h*bb_width):((h+1)*bb_width), 0] = np.multiply((w_matrix -
+                                                                     (img_width / 2)), hand_depth[h, :]) / fFocal_msra
+
+        for w in range(bb_width):
+            hand_3d[(w*bb_height):((w+1)*bb_height), 1] = np.multiply((h_matrix -
+                                                                       (img_height / 2)), hand_depth[:, w]) / fFocal_msra
+
+        """ for ii in range(bb_height):
             for jj in range(bb_width):
-                
-                # 0 < ii < bb_height - 1   
+
+                # 0 < ii < bb_height - 1
                 # 0 < jj < bb_weight - 1
                 # 0 < idx < h * w -1
-                
+
                 idx = ii * bb_width + jj
                 # x lable
                 hand_3d[idx, 0] = (jj - img_width/2 + bb_left) * \
@@ -157,9 +172,8 @@ class Read_MSRA(object):
                 hand_3d[idx, 1] = (ii - img_height/2 + bb_top) * \
                     hand_depth[ii, jj] / fFocal_msra
                 # z lable
-                hand_3d[idx, 2] = hand_depth[ii, jj]
+                hand_3d[idx, 2] = hand_depth[ii, jj] """
         # np.savetxt(self.save_ges_dir+'/depth_3d.txt', hand_3d)
-        '''
 
         valid_idx = []
 
