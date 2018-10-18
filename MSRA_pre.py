@@ -6,7 +6,7 @@ import struct
 
 
 dataset_dir = '/home/x/DB/MSRA HandPoseDataset/cvpr15_MSRAHandGestureDB/'
-save_dir = '/home/x/Codes/3D_Point_Projective_D_TSDF/results'
+save_dir = './results'
 
 subject_names = ['P0', 'P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8']
 gesture_names = ['1', '2', '3', '4', '5', '6', '7', '8',
