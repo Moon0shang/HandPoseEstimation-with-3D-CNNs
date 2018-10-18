@@ -29,6 +29,7 @@ class Read_MSRA(object):
 
     def read_all(self):
 
+        # create results file
         try:
             os.mkdir(save_dir)
         except:
@@ -38,6 +39,7 @@ class Read_MSRA(object):
 
         for sub in range(len(subject_names)):
 
+            # create subject files
             try:
                 os.mkdir(os.path.join(save_dir, subject_names[sub]))
             except:
@@ -56,7 +58,7 @@ class Read_MSRA(object):
                 # read ground truth
                 [ground_truth, frame_num] = self.read_ground_truth(ges_dir)
 
-                # create save files
+                # create gesture files
                 try:
                     os.mkdir(self.save_ges_dir)
                 except:
@@ -66,6 +68,7 @@ class Read_MSRA(object):
                     print('create directory %s' %
                           (subject_names[sub]+'/'+gesture_names[ges]))
 
+                # read depth files and save them
                 [jnt_xyz, hand_points] = self.read_depth_bin(
                     ges_dir, frame_num, sub, ges, ground_truth)
 
