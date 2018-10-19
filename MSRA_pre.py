@@ -5,7 +5,12 @@ import numpy as np
 import struct
 
 if os.name == 'nt':
-    dataset_dir= 'D:/DB/MSRA HandPoseDataset/cvpr15_MSRAHandGestureDB'
+
+    try:
+        dataset_dir = 'D:/DB/MSRA HandPoseDataset/cvpr15_MSRAHandGestureDB'
+    except:
+        dataset_dir = 'C:/DB/MSRA HandPoseDataset/cvpr15_MSRAHandGestureDB'
+
 else:
     dataset_dir = '/home/x/DB/MSRA HandPoseDataset/cvpr15_MSRAHandGestureDB/'
 save_dir = './results'
