@@ -118,6 +118,7 @@ class Read_MSRA(object):
         return jnt_xyz, hand_points  # hand_points_3d
 
         # read binary files
+
     def read_conv_bin(self, ges_dir, frm):
 
         with open(ges_dir + '/' + str('%06d' % frm) + '_depth.bin', 'rb') as f:
