@@ -8,15 +8,16 @@ def set_m(resolution=32):
  """
 
 
-def tsdf(depth_ori, pic_info):
+def tsdf(hand_points, depth_ori, pic_info):
 
     voxel_res = 32
     [fFocal_msra, img_height, img_width, bb_top, bb_bottom,
         bb_left, bb_right, bb_width, bb_height] = pic_info
-    point_max_min = max_min_point(depth_ori, pic_info)
+    point_max_min = max_min_point(hand_points, pic_info)
+
     # 不知道用途，也许可以删除
-    if any(point_max_min):
-        point_max_min = point_max_min[:-1]
+    # if any(point_max_min):
+    # point_max_min = point_max_min[:-1] """
 
     point_max = np.max(point_max_min[:, 3:6], axis=0)
     point_min = np.min(point_max_min[:, :3], axis=0)
@@ -31,6 +32,7 @@ def tsdf(depth_ori, pic_info):
     tsdf = tsdf_cal(depth_ori, pic_info, vox_ori, voxel_len, truncation)
 
 
+# need to be rewrite
 def max_min_point(hand_points, pic_info):
 
     [fFocal_msra, img_height, img_width, bb_top, bb_bottom,
