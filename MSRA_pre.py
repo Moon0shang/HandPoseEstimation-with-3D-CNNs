@@ -106,8 +106,9 @@ class Read_MSRA(object):
         for frm in range(num):
             if not valid[frm]:
                 continue
-            [hand_points, pic_info] = self.read_conv_bin(ges_dir, frm)
-            self.save_mat('points%03d' % frm, hand_points, pic_info)
+            [hand_points, depth_ori, pic_info] = self.read_conv_bin(
+                ges_dir, frm)
+            self.save_mat('points%03d' % frm, hand_points, depth_ori, pic_info)
             jnt_xyz = np.squeeze(ground_truth[frm, :, :])
 
         self.save_mat('joint', jnt_xyz)
@@ -191,13 +192,14 @@ class Read_MSRA(object):
 
         return hand_points, depth_ori, pic_info
 
-    def save_mat(self, name, datas, pic_info=0):
+    def save_mat(self, name, datas, depth_ori=0, pic_info=0):
 
         if pic_info == 0:
             sio.savemat(self.save_ges_dir + '/%s.mat' % name, {name: datas})
         else:
             sio.savemat(self.save_ges_dir + '/%s.mat' % name, {'points': datas,
-                                                               'pic_info': pic_info})
+                                                               'pic_info': pic_info,
+                                                               'depth_ori': depth_ori})
 
 
 if __name__ == '__main__':
