@@ -10,10 +10,15 @@ mm_threadsperblock = 128
 
 @cuda.jit
 def tsdf_kernel(vox_ori, voxel_len, l, r, t, b, trunc_dis, i, o):
-    b_w = r-l
+    #(vox_ori, voxel_len, l, r, t, b, trunc_dis, d_depth, d_tsdf)
+    b_w = r - l
+    # 0~32
     x = cuda.threadIdx.x
+    # 0~32
     y = cuda.blockIdx.x
+    # 0~32
     z = cuda.blockIdx.y
+    # blockdim.x = 32, griddim.x = 32
     v_index = x + y*cuda.blockDim.x + z*cuda.gridDim.x*cuda.blockDim.x
     volume_size = VOXEL_RES**3
     if v_index >= volume_size:
@@ -69,13 +74,14 @@ def tsdf_kernel(vox_ori, voxel_len, l, r, t, b, trunc_dis, i, o):
 
 
 @cuda.jit
-def min_max_kernel(l, r, t, b, a, o):
+def min_max_kernel(l, r, t, b, a, o):  # (l, r, t, b, d_depth, d_mm)
     b_w = r-l
     tid = cuda.threadIdx.x
     min_p = cuda.shared.array(
         shape=(mm_threadsperblock, 3), dtype=nb.types.float32)
     max_p = cuda.shared.array(
         shape=(mm_threadsperblock, 3), dtype=nb.types.float32)
+    # 一维grid
     pos = cuda.grid(1)
     x = pos % b_w + l
     y = pos / b_w + t
@@ -126,10 +132,14 @@ def cal_tsdf_cuda(s):
 
         # min max calculation
         blockdim = (s['data'].size + mm_threadsperblock - 1)/mm_threadsperblock
+        # 将一个numpy ndarray 转换为 device(cuda NDarray)
         d_depth = cuda.to_device(s['data'])
+        # 创建一个类似于np.empty 的空array
         d_mm = cuda.device_array([blockdim, 6], dtype=np.float32)
+        # 创建一个 kernel size(blockdim,mm_threadsperblock),输入参数(l, r, t, b, d_depth, d_mm)
         min_max_kernel[blockdim, mm_threadsperblock](l, r, t, b, d_depth, d_mm)
         mm_p = np.empty([blockdim, 6], dtype=np.float32)
+        # 将d_mm 从GPU中拷贝到CPU中
         mm_p = d_mm.copy_to_host()
         if True in np.isnan(mm_p[-1]):
             mm_p = mm_p[:-1]
@@ -148,6 +158,8 @@ def cal_tsdf_cuda(s):
         d_tsdf = cuda.device_array(
             [3, VOXEL_RES, VOXEL_RES, VOXEL_RES], dtype=np.float32)
         blockspergrid = [VOXEL_RES, VOXEL_RES]
+        # blockspergrid= [32,32];threadsperblock=32
+        # kernel size =
         tsdf_kernel[blockspergrid, threadsperblock](
             vox_ori, voxel_len, l, r, t, b, trunc_dis, d_depth, d_tsdf)
         # tsdf = np.empty([VOXEL_RES, VOXEL_RES, VOXEL_RES, 3], dtype=np.float32)
