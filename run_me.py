@@ -21,7 +21,7 @@ def show_points(file_dir):
     visualize(hand_points)
 
 
-def run_TSDF():
+def run_TSDF(file_dir):
 
     pass
 
