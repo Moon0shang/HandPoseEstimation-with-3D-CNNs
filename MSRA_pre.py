@@ -23,9 +23,8 @@ gesture_names = ['1', '2', '3', '4', '5', '6', '7', '8',
 class Read_MSRA(object):
 
     def __init__(self):
-        self.MSRA_valid = self.read_valid()
 
-        # self.read_all()
+        self.MSRA_valid = self.read_valid()
 
     def read_valid(self):
 
@@ -76,7 +75,7 @@ class Read_MSRA(object):
                           (subject_names[sub]+'/'+gesture_names[ges]))
 
                 # read depth files and save them
-                [jnt_xyz, hand_points] = self.read_depth_bin(
+                [jnt_xyz, hand_points] = self.read_all_depth(
                     ges_dir, frame_num, sub, ges, ground_truth)
 
         return jnt_xyz, hand_points
@@ -95,7 +94,7 @@ class Read_MSRA(object):
 
         return ground_truth, frame_num
 
-    def read_depth_bin(self, ges_dir, frame_num, sub, ges, ground_truth):
+    def read_all_depth(self, ges_dir, frame_num, sub, ges, ground_truth):
 
         num = 0
         for i in os.listdir(ges_dir):
@@ -107,8 +106,8 @@ class Read_MSRA(object):
         for frm in range(num):
             if not valid[frm]:
                 continue
-            hand_points = self.read_conv_bin(ges_dir, frm)
-            self.save_mat('points%03d' % frm, hand_points)
+            [hand_points, pic_info] = self.read_conv_bin(ges_dir, frm)
+            self.save_mat('points%03d' % frm, hand_points, pic_info)
             jnt_xyz = np.squeeze(ground_truth[frm, :, :])
 
         self.save_mat('joint', jnt_xyz)
@@ -141,6 +140,7 @@ class Read_MSRA(object):
 
         hand_depth = np.array(hand_depth, dtype=np.float32)
 
+        depth_ori = hand_depth
         hand_3d[:, 2] = hand_depth
 
         hand_depth = hand_depth.reshape(bb_height, bb_width)
@@ -151,13 +151,13 @@ class Read_MSRA(object):
         h_matrix = np.array([i for i in range(bb_height)], dtype=np.float32)
         w_matrix = np.array([i for i in range(bb_width)], dtype=np.float32)
         for h in range(bb_height):
-            hand_3d[(h*bb_width):((h+1)*bb_width), 0] = np.multiply((w_matrix -
-                                                                     (img_width / 2)), hand_depth[h, :]) / fFocal_msra
+            hand_3d[(h*bb_width):((h+1)*bb_width), 0] = np.multiply((w_matrix +
+                                                                     bb_left-(img_width / 2)), hand_depth[h, :]) / fFocal_msra
 
         for w in range(bb_width):
             idx = [(hi*bb_width+w) for hi in range(bb_height)]
             hand_3d[idx, 1] = np.multiply(
-                (h_matrix - (img_height / 2)), hand_depth[:, w]) / fFocal_msra
+                (h_matrix+bb_top - (img_height / 2)), hand_depth[:, w]) / fFocal_msra
 
         """ for ii in range(bb_height):
             for jj in range(bb_width):
@@ -186,12 +186,18 @@ class Read_MSRA(object):
         hand_points = hand_3d[valid_idx, :]
 
         # np.savetxt(self.save_ges_dir + '/v_3D.txt', hand_points)
+        pic_info = [fFocal_msra, img_height, img_width,
+                    bb_top, bb_bottom, bb_left, bb_right, bb_width, bb_height]
 
-        return hand_points
+        return hand_points, depth_ori, pic_info
 
-    def save_mat(self, name, datas):
+    def save_mat(self, name, datas, pic_info=0):
 
-        sio.savemat(self.save_ges_dir+'/%s.mat' % name, {name: datas})
+        if pic_info == 0:
+            sio.savemat(self.save_ges_dir + '/%s.mat' % name, {name: datas})
+        else:
+            sio.savemat(self.save_ges_dir + '/%s.mat' % name, {'points': datas,
+                                                               'pic_info': pic_info})
 
 
 if __name__ == '__main__':
