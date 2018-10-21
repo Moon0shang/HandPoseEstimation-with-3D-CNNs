@@ -106,9 +106,9 @@ class Read_MSRA(object):
         for frm in range(num):
             if not valid[frm]:
                 continue
-            [hand_points, depth_ori, pic_info] = self.read_conv_bin(
+            [hand_points, hand_ori, pic_info] = self.read_conv_bin(
                 ges_dir, frm)
-            self.save_mat('points%03d' % frm, hand_points, depth_ori, pic_info)
+            self.save_mat('points%03d' % frm, hand_points, hand_ori, pic_info)
             jnt_xyz = np.squeeze(ground_truth[frm, :, :])
 
         self.save_mat('joint', jnt_xyz)
@@ -141,8 +141,7 @@ class Read_MSRA(object):
 
         hand_depth = np.array(hand_depth, dtype=np.float32)
 
-        depth_ori = hand_depth
-        hand_3d[:, 2] = hand_depth
+        hand_3d[:, 2] = -hand_depth
 
         hand_depth = hand_depth.reshape(bb_height, bb_width)
         # hand_depth = hand_depth.transpose()
@@ -157,9 +156,10 @@ class Read_MSRA(object):
 
         for w in range(bb_width):
             idx = [(hi*bb_width+w) for hi in range(bb_height)]
-            hand_3d[idx, 1] = np.multiply(
+            hand_3d[idx, 1] = -np.multiply(
                 (h_matrix+bb_top - (img_height / 2)), hand_depth[:, w]) / fFocal_msra
 
+        hand_ori = hand_3d
         """ for ii in range(bb_height):
             for jj in range(bb_width):
 
@@ -190,16 +190,16 @@ class Read_MSRA(object):
         pic_info = [fFocal_msra, img_height, img_width,
                     bb_top, bb_bottom, bb_left, bb_right, bb_width, bb_height]
 
-        return hand_points, depth_ori, pic_info
+        return hand_points, hand_ori, pic_info
 
-    def save_mat(self, name, datas, depth_ori=0, pic_info=0):
+    def save_mat(self, name, datas, hand_ori=0, pic_info=0):
 
         if pic_info == 0:
             sio.savemat(self.save_ges_dir + '/%s.mat' % name, {name: datas})
         else:
             sio.savemat(self.save_ges_dir + '/%s.mat' % name, {'points': datas,
                                                                'pic_info': pic_info,
-                                                               'depth_ori': depth_ori})
+                                                               'hand_ori': hand_ori})
 
 
 if __name__ == '__main__':
