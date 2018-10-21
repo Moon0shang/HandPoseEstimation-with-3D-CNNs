@@ -27,14 +27,17 @@ def run_TSDF(file_dir):
 
     hand_points_raw = sio.loadmat(file_dir)
     hand_points = hand_points_raw['points']
-    depth_ori = hand_points_raw['depth_ori']
+    hand_ori = hand_points_raw['hand_ori']
     pic_info = hand_points_raw['pic_info'][0]
 
-    tsdf(hand_points, depth_ori, pic_info)
+    tsdf_v = tsdf(hand_points, hand_ori, pic_info)
+
+    return tsdf_v
 
 
 if __name__ == '__main__':
 
     select_file_dir = './results/P0/1/points000.mat'
     # show_points(select_file_dir)
-    run_TSDF(select_file_dir)
+    tsdf_v = run_TSDF(select_file_dir)
+    # visualize(tsdf_v)
