@@ -13,7 +13,8 @@ def tsdf(hand_points, depth_ori, pic_info):
     voxel_res = 32
     [fFocal_msra, img_height, img_width, bb_top, bb_bottom,
         bb_left, bb_right, bb_width, bb_height] = pic_info
-    point_max_min = max_min_point(hand_points, pic_info)
+    blockdim = (depth_ori.size+128-1)/128
+    point_max_min = max_min_point(blockdim, hand_points, pic_info)
 
     # 不知道用途，也许可以删除
     # if any(point_max_min):
@@ -33,11 +34,67 @@ def tsdf(hand_points, depth_ori, pic_info):
 
 
 # need to be rewrite
-def max_min_point(hand_points, pic_info):
+def max_min_point(blockdim, depth_ori, pic_info):
 
     [fFocal_msra, img_height, img_width, bb_top, bb_bottom,
         bb_left, bb_right, bb_width, bb_height] = pic_info
 
+    mm_threadperblock = 128
+    center_x = 160
+    center_y = 120
+    point_max_min = np.empty([blockdim, 6], dtype=np.float32)
+
+    point_min = np.empty((128, 3), dtype=np.float32)
+    point_max = np.empty((128, 3), dtype=np.float32)
+    '''此处需要一个循环'''
+    for bid in range(blockdim):
+        for tid in range(128):
+            # cuda.grid = threadidx.x+blockidx.x*blockdim.x
+            # threadidx.x =0~127; blockidx.x=0~blockdim-1
+            # blockdim.x=128
+            pos = tid+bid*128
+            x = pos % bb_width + bb_left
+            y = pos / bb_width + bb_top
+            cam_z = depth_ori[pos]
+            if abs(cam_z) < 1:
+                point_min[tid][0], point_min[tid][1], point_min[tid][2] = 9999, 9999, 9999
+                point_max[tid][0], point_max[tid][1], point_max[tid][2] = - \
+                    9999, -9999, -9999
+            else:
+                coeff = cam_z / fFocal_msra
+                cam_x = coeff * (x - center_x)
+                cam_y = coeff * (y - center_y)
+                point_min[tid][0], point_min[tid][1], point_min[tid][2] = cam_x, cam_y, cam_z
+                point_max[tid][0], point_max[tid][1], point_max[tid][2] = cam_x, cam_y, cam_z
+
+            s = 1
+            while s < 128:
+                index = 2 * s * tid
+                if index + s < 128:
+                    point_min[index][0] = min(
+                        point_min[index + s][0], point_min[index][0])
+                    point_min[index][1] = min(
+                        point_min[index + s][1], point_min[index][1])
+                    point_min[index][2] = min(
+                        point_min[index + s][2], point_min[index][2])
+                    point_max[index][0] = min(
+                        point_max[index + s][0], point_max[index][0])
+                    point_max[index][1] = min(
+                        point_max[index + s][1], point_max[index][1])
+                    point_max[index][2] = min(
+                        point_max[index+s][2], point_max[index][2])
+
+                    s *= 2
+            if tid == 0:
+                point_max_min[bid][0] = point_min[0][0]
+                point_max_min[bid][1] = point_min[0][1]
+                point_max_min[bid][2] = point_min[0][2]
+                point_max_min[bid][3] = point_max[0][0]
+                point_max_min[bid][4] = point_max[0][1]
+                point_max_min[bid][5] = point_max[0][2]
+
+
+""" 
     x = hand_points[:, 0]
     y = hand_points[:, 1]
     z = hand_points[:, 2]
@@ -51,6 +108,7 @@ def max_min_point(hand_points, pic_info):
     point_max_min = np.array([x_min, y_min, z_min, x_max, y_max, z_max])
 
     return point_max_min
+ """
 
 
 def tsdf_cal(depth_ori, pic_info, vox_ori, voxel_len, truncation):
