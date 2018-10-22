@@ -1,7 +1,7 @@
 import numpy as np
 import scipy.io as sio
 
-""" 
+"""
 def set_m(resolution=32):
 
     return resolution
@@ -11,7 +11,7 @@ def set_m(resolution=32):
 def tsdf(hand_points, hand_ori, pic_info):
 
     voxel_res = 32
-    """ 
+    """
     [fFocal_msra, img_height, img_width, bb_top, bb_bottom,
         bb_left, bb_right, bb_width, bb_height] = pic_info """
     # blockdim = (hand_ori.size+128-1)//128
@@ -65,7 +65,7 @@ def max_min_point(hand_ori):
     return point_max, point_min
 
 
-""" 
+"""
 wrong method that takes too much time, don't use it!
 def max_min_point(blockdim, hand_ori, pic_info):
 
@@ -130,7 +130,7 @@ def max_min_point(blockdim, hand_ori, pic_info):
     return point_max_min
 
  """
-""" 
+"""
     x = hand_points[:, 0]
     y = hand_points[:, 1]
     z = hand_points[:, 2]
@@ -157,6 +157,7 @@ def tsdf_cal(depth_ori, pic_info, vox_ori, voxel_len, truncation, point_mid):
     volume_size = 32 * 32 * 32
 
     tsdf_v = np.empty([3, 32, 32, 32])
+    tsdf_v1 = np.empty([3, 32, 32, 32])
     # sdf = np.empty([32, 32, 32])
     for x in range(32):
         for y in range(32):
@@ -196,9 +197,12 @@ def tsdf_cal(depth_ori, pic_info, vox_ori, voxel_len, truncation, point_mid):
                 world_y = (pixel_y - y_center) * coeff1
                 world_z = -pixel_depth
 
-                tsdf_x = abs(voxel_x - world_x) / truncation
-                tsdf_y = abs(voxel_y - world_y) / truncation
-                tsdf_z = abs(voxel_z - world_z) / truncation
+                tsdf_x = abs(voxel_x - world_x) / truncation-7
+                tsdf_y = abs(voxel_y - world_y) / truncation-2
+                tsdf_z = (abs(voxel_z - world_z) / truncation-43)/6  # (37-48)
+                tsdf_v1[0, z, y, x] = tsdf_x
+                tsdf_v1[1, z, y, x] = tsdf_y
+                tsdf_v1[2, z, y, x] = tsdf_z
                 dis_to_sur_min = pow(tsdf_x * tsdf_x + tsdf_y *
                                      tsdf_y + tsdf_z * tsdf_z, 0.5)
                 if dis_to_sur_min > 1:
@@ -210,11 +214,11 @@ def tsdf_cal(depth_ori, pic_info, vox_ori, voxel_len, truncation, point_mid):
                 tsdf_y = min(tsdf_y, 1)
                 tsdf_z = min(tsdf_z, 1)
 
-                if world_z > voxel_z:
+                """  if world_z > voxel_z:
                     tsdf_x = - tsdf_x
                     tsdf_y = - tsdf_y
                     tsdf_z = - tsdf_z
-
+                """
                 tsdf_v[0, z, y, x] = tsdf_x
                 tsdf_v[1, z, y, x] = tsdf_y
                 tsdf_v[2, z, y, x] = tsdf_z
