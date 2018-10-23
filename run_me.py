@@ -1,5 +1,6 @@
 import os
 import os.path
+import numpy as np
 import scipy.io as sio
 
 from MSRA_pre import Read_MSRA
@@ -32,12 +33,38 @@ def run_TSDF(file_dir):
 
     tsdf_v = tsdf(hand_points, hand_ori, pic_info)
 
+    sio.savemat('./tsdf/tsdf.mat', {'tsdf': tsdf_v})
+
     return tsdf_v
+
+
+def show_TSDF(file_dir):
+
+    tsdf_v = sio.loadmat(file_dir)
+    tsdf_v = tsdf_v['tsdf']
+
+    px = []
+    py = []
+    pz = []
+
+    for x in range(32):
+        for y in range(32):
+            for z in range(32):
+                if tsdf_v[0, x, y, z] != 0:
+                    px.append(x)
+                    py.append(y)
+                    pz.append(z)
+    point_show = np.array([px, py, pz], dtype=np.float32)
+
+    visualize(point_show)
 
 
 if __name__ == '__main__':
 
+    # initial_data()
     select_file_dir = './results/P0/1/points000.mat'
     # show_points(select_file_dir)
-    tsdf_v = run_TSDF(select_file_dir)
-    # visualize(tsdf_v)
+    # tsdf_v = run_TSDF(select_file_dir)
+
+    tsdf_dir = './tsdf/tsdf.mat'
+    show_TSDF(tsdf_dir)
