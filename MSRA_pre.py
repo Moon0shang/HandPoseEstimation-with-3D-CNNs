@@ -4,15 +4,18 @@ import scipy.io as sio
 import numpy as np
 import struct
 
+# read MSRA dataset
 if os.name == 'nt':
-
     try:
         dataset_dir = 'D:/DB/MSRA HandPoseDataset/cvpr15_MSRAHandGestureDB'
     except:
+        pass
+    else:
         dataset_dir = 'C:/DB/MSRA HandPoseDataset/cvpr15_MSRAHandGestureDB'
 
 else:
     dataset_dir = '/home/x/DB/MSRA HandPoseDataset/cvpr15_MSRAHandGestureDB/'
+
 save_dir = './results'
 
 subject_names = ['P0', 'P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8']
@@ -113,9 +116,7 @@ class Read_MSRA(object):
 
         self.save_mat('joint', jnt_xyz)
 
-        # hand_points_3d[frm, :, :] = hand_points
-
-        return jnt_xyz, hand_points  # hand_points_3d
+        return jnt_xyz, hand_points
 
         # read binary files
 
@@ -137,30 +138,32 @@ class Read_MSRA(object):
                 'f'*valid_pixel_num, f.read(4*valid_pixel_num))
 
         fFocal_msra = 241.42
-        hand_3d = np.zeros((valid_pixel_num, 3))
+        hand_3d = np.zeros((3, valid_pixel_num))
 
         hand_depth = np.array(hand_depth, dtype=np.float32)
 
-        hand_3d[:, 2] = -hand_depth
+        # '-' get on the right position
+        hand_3d[2, :] = - hand_depth
 
         hand_depth = hand_depth.reshape(bb_height, bb_width)
-        # hand_depth = hand_depth.transpose()
-
-        # np.savetxt(self.save_ges_dir + '/depth.txt', hand_depth)
 
         h_matrix = np.array([i for i in range(bb_height)], dtype=np.float32)
         w_matrix = np.array([i for i in range(bb_width)], dtype=np.float32)
         for h in range(bb_height):
-            hand_3d[(h*bb_width):((h+1)*bb_width), 0] = np.multiply((w_matrix +
+            hand_3d[0, (h*bb_width):((h+1)*bb_width)] = np.multiply((w_matrix +
                                                                      bb_left-(img_width / 2)), hand_depth[h, :]) / fFocal_msra
 
         for w in range(bb_width):
-            idx = [(hi*bb_width+w) for hi in range(bb_height)]
-            hand_3d[idx, 1] = -np.multiply(
+            idx = [(hi * bb_width + w) for hi in range(bb_height)]
+            # '-' get on the right position
+            hand_3d[1, idx] = -np.multiply(
                 (h_matrix+bb_top - (img_height / 2)), hand_depth[:, w]) / fFocal_msra
 
         hand_ori = hand_3d
-        """ for ii in range(bb_height):
+        """ 
+        can use but need more time with CPU threads
+        
+        for ii in range(bb_height):
             for jj in range(bb_width):
 
                 # 0 < ii < bb_height - 1
@@ -175,18 +178,17 @@ class Read_MSRA(object):
                 hand_3d[idx, 1] = (ii - img_height/2 + bb_top) * \
                     hand_depth[ii, jj] / fFocal_msra
                 # z lable
-                hand_3d[idx, 2] = hand_depth[ii, jj] """
-        # np.savetxt(self.save_ges_dir+'/depth_3d.txt', hand_3d)
+                hand_3d[idx, 2] = hand_depth[ii, jj] 
+        """
 
         valid_idx = []
 
         for num in range(valid_pixel_num):
-            if any(hand_3d[num, :]):
+            if any(hand_3d[:, num]):
                 valid_idx.append(num)
 
-        hand_points = hand_3d[valid_idx, :]
+        hand_points = hand_3d[:, valid_idx]
 
-        # np.savetxt(self.save_ges_dir + '/v_3D.txt', hand_points)
         pic_info = [fFocal_msra, img_height, img_width,
                     bb_top, bb_bottom, bb_left, bb_right, bb_width, bb_height]
 
