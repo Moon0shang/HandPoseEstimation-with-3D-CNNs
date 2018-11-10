@@ -31,13 +31,19 @@ class Read_MSRA(object):
 
     def read_valid(self):
 
-        raw = sio.loadmat('./msra_valid.mat')
+        raw = sio.loadmat('./preprocess/msra_valid.mat')
         data = raw['msra_valid']
 
         return data
 
     def read_all(self):
 
+        # create tsdf dir
+        try:
+            os.mkdir('tsdf')
+
+        except:
+            print('directory tsdf alread exist!')
         # create results file
         try:
             os.mkdir(save_dir)
@@ -123,6 +129,9 @@ class Read_MSRA(object):
     def read_conv_bin(self, ges_dir, frm):
 
         with open(ges_dir + '/' + str('%06d' % frm) + '_depth.bin', 'rb') as f:
+            header = np.fromfile(f, dtype=np.int32, count=6)
+            # hand_depth =
+
             img_width = struct.unpack('I', f.read(4))[0]
             img_height = struct.unpack('I', f.read(4))[0]
 

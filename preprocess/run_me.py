@@ -34,26 +34,22 @@ def run_TSDF(file_dir):
     tsdf_v = tsdf(hand_points, hand_ori, pic_info)
 
     sio.savemat('./tsdf/tsdf.mat', {'tsdf': tsdf_v})
+    print('tsdf files saved')
 
     return tsdf_v
 
 
-def show_TSDF(file_dir):
+def show_TSDF(file_dir, d):
 
     tsdf_v = sio.loadmat(file_dir)
     tsdf_v = tsdf_v['tsdf']
 
-    px = []
-    py = []
-    pz = []
+    idx = np.where(tsdf_v[0, :, :, :] == 1)
 
-    for x in range(32):
-        for y in range(32):
-            for z in range(32):
-                if tsdf_v[0, x, y, z] != 0:
-                    px.append(x)
-                    py.append(y)
-                    pz.append(z)
+    px = idx[0]
+    py = idx[1]
+    pz = idx[2]
+
     point_show = np.array([px, py, pz], dtype=np.float32)
 
     visualize(point_show)
@@ -62,9 +58,9 @@ def show_TSDF(file_dir):
 if __name__ == '__main__':
 
     # initial_data()
-    select_file_dir = './results/P0/1/points000.mat'
+    # select_file_dir = './results/P0/1/points000.mat'
     # show_points(select_file_dir)
     # tsdf_v = run_TSDF(select_file_dir)
 
     tsdf_dir = './tsdf/tsdf.mat'
-    show_TSDF(tsdf_dir)
+    show_TSDF(tsdf_dir, d=0)
