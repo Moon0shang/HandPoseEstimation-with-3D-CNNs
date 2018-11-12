@@ -1,16 +1,22 @@
 import numpy as np
-import numba as nb
-from numba import cuda
-import scipy.io as sio
-
-from visualize import visualize
-
-fFocal_msra = 241.42
 
 
-def tsdf(data, point_cloud):
+def tsdf(hand_points, hand_ori, pic_info):
+
     voxel_res = 32
-    point_max, point_min = max_min_point(point_cloud)
+    """
+    [fFocal_msra, img_height, img_width, bb_top, bb_bottom,
+        bb_left, bb_right, bb_width, bb_height] = pic_info """
+    # blockdim = (hand_ori.size+128-1)//128
+    depth_ori = hand_ori[2, :]
+    point_max, point_min = max_min_point(hand_ori)
+
+    # 不知道用途，也许可以删除
+    # if any(point_max_min):
+    # point_max_min = point_max_min[:-1] """
+
+    # point_max = np.max(point_max_min[:, 3:6], axis=0)
+    # point_min = np.min(point_max_min[:, :3], axis=0)
 
     point_mid = (point_max + point_min) / 2
     len_pixel = point_max - point_min
@@ -19,9 +25,13 @@ def tsdf(data, point_cloud):
     truncation = voxel_len * 3
     vox_ori = point_mid - max_lenth / 2 + voxel_len / 2
     # tsdf calculation
-    tsdf_v = tsdf_cal(data, vox_ori, voxel_len, truncation)
+
+    tsdf_v = tsdf_cal(depth_ori, pic_info, vox_ori,
+                      voxel_len, truncation, point_mid)
 
     return tsdf_v
+
+# need to be rewrite
 
 
 def max_min_point(hand_ori):
@@ -46,34 +56,26 @@ def max_min_point(hand_ori):
     return point_max, point_min
 
 
-def tsdf_cal(data, vox_ori, voxel_len, truncation):
+def tsdf_cal(depth_ori, pic_info, vox_ori, voxel_len, truncation, point_mid):
 
-    depth_ori = data['depth']
-    depth = data['depth']
-    img_width = header[0]
-    img_height = header[1]
-    bb_left = header[2]
-    bb_top = header[3]
-    bb_right = header[4]
-    bb_bottom = header[5]
-    bb_height = bb_bottom - bb_top
-    bb_width = bb_right - bb_left
+    [fFocal_msra, img_height, img_width, bb_top, bb_bottom,
+        bb_left, bb_right, bb_width, bb_height] = pic_info
 
     x_center = 160
     y_center = 120
     volume_size = 32 * 32 * 32
 
-    tsdf_v = np.zeros([3, 32, 32, 32])
-    # tsdf_v1 = np.empty([3, 32, 32, 32])
+    tsdf_v = np.empty([3, 32, 32, 32])
+    tsdf_v1 = np.empty([3, 32, 32, 32])
     # sdf = np.empty([32, 32, 32])
     for x in range(32):
         for y in range(32):
             for z in range(32):
 
-                # voxel_idx = x + y * 32 + z * 32 * 32
-                # if voxel_idx >= volume_size:
-                #     # print('out of range')
-                #     continue
+                voxel_idx = x + y * 32 + z * 32 * 32
+                if voxel_idx >= volume_size:
+                    # print('out of range')
+                    continue
 
                 # voxel center
                 voxel_x = vox_ori[0] + x * voxel_len
@@ -82,8 +84,8 @@ def tsdf_cal(data, vox_ori, voxel_len, truncation):
 
                 # voxel center in image frame
                 coeff = -fFocal_msra / voxel_z
-                pixel_x = int(voxel_x * coeff + x_center)
-                pixel_y = int(-voxel_y * coeff + y_center)
+                pixel_x = int((voxel_x * coeff + x_center))
+                pixel_y = int((-voxel_y * coeff + y_center))
                 '''need to modify'''
 
                 if pixel_x < bb_left or pixel_x >= bb_right or pixel_y < bb_top or pixel_y >= bb_bottom:
@@ -101,14 +103,17 @@ def tsdf_cal(data, vox_ori, voxel_len, truncation):
 
                 coeff1 = pixel_depth / fFocal_msra
                 world_x = (pixel_x - x_center) * coeff1
-                world_y = -(pixel_y - y_center) * coeff1
+                world_y = (pixel_y - y_center) * coeff1
                 world_z = -pixel_depth
 
-                tsdf_x = abs(voxel_x - world_x) / truncation
-                tsdf_y = abs(voxel_y - world_y) / truncation
-                tsdf_z = abs(voxel_z - world_z) / truncation
-                dis_to_sur_min = np.sqrt(
-                    tsdf_x * tsdf_x + tsdf_y * tsdf_y + tsdf_z * tsdf_z)
+                tsdf_x = abs(voxel_x - world_x) / truncation-7
+                tsdf_y = abs(voxel_y - world_y) / truncation-2
+                tsdf_z = (abs(voxel_z - world_z) / truncation-43)/6  # (37-48)
+                tsdf_v1[0, z, y, x] = tsdf_x
+                tsdf_v1[1, z, y, x] = tsdf_y
+                tsdf_v1[2, z, y, x] = tsdf_z
+                dis_to_sur_min = pow(tsdf_x * tsdf_x + tsdf_y *
+                                     tsdf_y + tsdf_z * tsdf_z, 0.5)
                 if dis_to_sur_min > 1:
                     tsdf_x = 1
                     tsdf_y = 1
@@ -123,30 +128,8 @@ def tsdf_cal(data, vox_ori, voxel_len, truncation):
                     tsdf_y = - tsdf_y
                     tsdf_z = - tsdf_z
 
-                tsdf_v[0, x, y, z] = tsdf_x
-                tsdf_v[1, x, y, z] = tsdf_y
-                tsdf_v[2, x, y, z] = tsdf_z
+                tsdf_v[0, z, y, x] = tsdf_x
+                tsdf_v[1, z, y, x] = tsdf_y
+                tsdf_v[2, z, y, x] = tsdf_z
 
     return tsdf_v
-
-
-if __name__ == "__main__":
-    data = sio.loadmat('./result/P0.mat')
-    header = data['1'][0][0][0]
-    depth = data['1'][0][1][0]
-    sample = {
-        'header': header,
-        'depth': depth
-    }
-    pc = sio.loadmat('./result/pc1.mat')
-    pc = pc['pc']
-    tsdf_v = tsdf(sample, pc)
-    sio.savemat('./tsdf.mat', {'tsdf': tsdf_v})
-    idx = np.where(tsdf_v[1, :, :, :] == 1)
-
-    px = idx[0]
-    py = idx[1]
-    pz = idx[2]
-
-    point_show = np.array([px, py, pz], dtype=np.float32)
-    visualize(point_show)
