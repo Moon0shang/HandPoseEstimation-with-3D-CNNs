@@ -17,6 +17,8 @@ import scipy.io as sio
 
 from point_cloud import point_cloud
 from tsdf import tsdf_cal
+# from data_aug import data_augmentation
+
 
 DB_dir = '/home/x/DB/MSRA HandPoseDataset/cvpr15_MSRAHandGestureDB/'
 SAVE_dir = './result'
@@ -57,6 +59,7 @@ def main():
 
             POINT_CLOUD = np.empty([bin_num, 3, ])
             TSDF = np.empty([bin_num, 3, 32, 32, 32])
+            AUG_tsdf = np.empty([bin_num, 3, 32, 32, 32])
             for i in range(bin_num):
                 file_name = os.path.join(file_dir, '%06d_depth.bin' % i)
                 [header, depth] = read_bin(file_name)
@@ -65,14 +68,21 @@ def main():
                 data_single = [header, depth]
                 pc = point_cloud(data_single)
                 POINT_CLOUD[i] = pc
-                tsdf = tsdf_cal(data_single)
+                tsdf = tsdf_cal(header, pc)
                 TSDF[i] = tsdf
+                # aug_pc = data_augmentation(pc)
+                # aug_tsdf = tsdf_cal(header, aug_pc)
+                # AUG_tsdf[i] = aug_tsdf
+
             sio.savemat(os.path.join(sub_dir, 'Point_Cloud', '%s.mat' % ges),
                         {'PC': POINT_CLOUD})
             print('file %s-point_cloud saved' % ges)
             sio.savemat(os.path.join(sub_dir, "TSDF", '%s.mat' % ges),
                         {'TSDF': TSDF})
             print('file % s-TSDF.mat saved' % ges)
+            # sio.savemat(os.path.join(sub_dir, "TSDF", '%s.mat' % ges),
+            #             {'TSDF': AUG_tsdf})
+            # print('file % s-AUG_tsdf.mat saved' % ges)
         sio.savemat(os.path.join(SAVE_dir, '%s-ground_truth.mat' % sub),
                     {'ground_truth': ground_truth})
         print('gound_truth file saved.')

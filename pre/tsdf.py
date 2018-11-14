@@ -8,7 +8,7 @@ from visualize import visualize
 fFocal_msra = 241.42
 
 
-def tsdf(data, point_cloud):
+def tsdf(header, point_cloud):
     voxel_res = 32
     point_max, point_min = max_min_point(point_cloud)
 
@@ -19,7 +19,8 @@ def tsdf(data, point_cloud):
     truncation = voxel_len * 3
     vox_ori = point_mid - max_lenth / 2 + voxel_len / 2
     # tsdf calculation
-    tsdf_v = tsdf_cal(data, vox_ori, voxel_len, truncation)
+    depth = -point_cloud[2, :]
+    tsdf_v = tsdf_cal(header, depth, vox_ori, voxel_len, truncation)
 
     return tsdf_v
 
@@ -46,10 +47,8 @@ def max_min_point(hand_ori):
     return point_max, point_min
 
 
-def tsdf_cal(data, vox_ori, voxel_len, truncation):
+def tsdf_cal(header, depth, vox_ori, voxel_len, truncation):
 
-    depth_ori = data['depth']
-    depth = data['depth']
     img_width = header[0]
     img_height = header[1]
     bb_left = header[2]
@@ -70,10 +69,10 @@ def tsdf_cal(data, vox_ori, voxel_len, truncation):
         for y in range(32):
             for z in range(32):
 
-                # voxel_idx = x + y * 32 + z * 32 * 32
-                # if voxel_idx >= volume_size:
-                #     # print('out of range')
-                #     continue
+                voxel_idx = x + y * 32 + z * 32 * 32
+                if voxel_idx >= volume_size:
+                    # print('out of range')
+                    continue
 
                 # voxel center
                 voxel_x = vox_ori[0] + x * voxel_len
@@ -91,7 +90,7 @@ def tsdf_cal(data, vox_ori, voxel_len, truncation):
                     continue
 
                 idx = int((pixel_y - bb_top) * bb_width + pixel_x - bb_left)
-                pixel_depth = depth_ori[idx]
+                pixel_depth = depth[idx]
 
                 if abs(pixel_depth) < 1:
                     # print('wrong depth')
@@ -140,9 +139,9 @@ if __name__ == "__main__":
     }
     pc = sio.loadmat('./result/pc1.mat')
     pc = pc['pc']
-    tsdf_v = tsdf(sample, pc)
+    tsdf_v = tsdf(header, pc)
     sio.savemat('./tsdf.mat', {'tsdf': tsdf_v})
-    idx = np.where(tsdf_v[1, :, :, :] == 1)
+    idx = np.where(tsdf_v[2, :, :, :] == 1)
 
     px = idx[0]
     py = idx[1]
