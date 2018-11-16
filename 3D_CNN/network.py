@@ -1,8 +1,8 @@
-import re
+# import re
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.utils.model_zoo as model_zoo
+# import torch.utils.model_zoo as model_zoo
 from collections import OrderedDict
 
 
@@ -52,7 +52,7 @@ class _Transition(nn.Sequential):
 
 
 class DenseNet(nn.Module):
-    def __init__(self, growth_rate=32, block_config=(2, 4, 4, 2), init_feature=16, bn_size=4, drop_rate=0, class_num=1000):
+    def __init__(self, growth_rate=32, block_config=(2, 4, 4, 2), init_feature=16, bn_size=4, drop_rate=0):
         super(DenseNet, self).__init__()
 
         # first convolution
@@ -82,10 +82,10 @@ class DenseNet(nn.Module):
                 feature_num = feature_num // 2
 
         # final batch norm
-        self.features.add_module('norm5', nn.BatchNorm3d(feature_num))
+        # self.features.add_module('norm5', nn.BatchNorm3d(feature_num))
 
         # linear layer
-        self.classifier = nn.Linear(feature_num, class_num)
+        # self.classifier = nn.Linear(feature_num, class_num)
 
         # official init from
         for m in self.modules():
@@ -109,6 +109,6 @@ class DenseNet(nn.Module):
         out = F.linear(4096, 1024)
         out = F.relu(out)
         out = F.dropout(out)
-        out = self.classifier(out)
+        out = F.linear(1024, 21*3)
 
         return out
