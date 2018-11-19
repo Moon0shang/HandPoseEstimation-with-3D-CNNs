@@ -16,18 +16,20 @@ import numpy as np
 import scipy.io as sio
 
 from point_cloud import point_cloud
-from tsdf import tsdf_cal
+from tsdf import tsdf_f
 # from data_aug import data_augmentation
 
 
 DB_dir = '/home/x/DB/MSRA HandPoseDataset/cvpr15_MSRAHandGestureDB/'
 SAVE_dir = './result'
+PC_dir = './PC'
 
 
 def main():
     "main part"
     try:
         os.mkdir(SAVE_dir)
+        os.mkdir(PC_dir)
         print('create directory "result".')
     except:
         print('directory "result" already exist!')
@@ -37,15 +39,17 @@ def main():
     gesture = sorted(os.listdir(os.path.join(DB_dir, subject[0])))
     # in each gesture files there are 1 joint.txt file that
     # stores the number of bin files and the ground truth infomation
-
     for sub in subject:
         sub_dir = os.path.join(SAVE_dir, sub)
+        pc_dir = os.path.join(PC_dir, sub)
         try:
             os.mkdir(sub_dir)
+            os.mkdir(pc_dir)
             print('create directory "%s".' % sub)
         except:
-            print('directory "%s" already exist!')
-        ground_truth = []
+            print('directory "%s" already exist!' % sub)
+        # ground_truth = []
+        total_num = 0
         for ges in gesture:
             # ges_dir = os.path.join(sub_dir, ges)
             # try:
@@ -54,38 +58,49 @@ def main():
             # except:
             #     print('directory "%s" already exist!')
             file_dir = os.path.join(DB_dir, sub, ges)
-            [bin_num, truth_single] = read_joint(file_dir)
-            ground_truth.append(truth_single)
+            [bin_num, ground_truth] = read_joint(file_dir)
+            total_num += bin_num
 
-            POINT_CLOUD = np.empty([bin_num, 3, ])
+            point_num = 9000
+            POINT_CLOUD = np.empty([bin_num, 3, point_num])
             TSDF = np.empty([bin_num, 3, 32, 32, 32])
-            AUG_tsdf = np.empty([bin_num, 3, 32, 32, 32])
+            MAX_L = np.empty(bin_num)
+            MID_P = np.empty([bin_num, 3])
+            # AUG_tsdf = np.empty([bin_num, 3, 32, 32, 32])
             for i in range(bin_num):
                 file_name = os.path.join(file_dir, '%06d_depth.bin' % i)
-                [header, depth] = read_bin(file_name)
                 # for the header, the order is image width, image height,
                 # boundbox left,bb top, bb right, bb bottom
-                data_single = [header, depth]
-                pc = point_cloud(data_single)
+                [header, depth] = read_bin(file_name)
+                data_single = {'header': header, 'depth': depth}
+                [hand_3d, pc] = point_cloud(data_single, point_num)
                 POINT_CLOUD[i] = pc
-                tsdf = tsdf_cal(header, pc)
+                tsdf, max_l, mid_point = tsdf_f(header, depth, hand_3d)
                 TSDF[i] = tsdf
+                MAX_L[i] = max_l
+                MID_P[i] = mid_point
                 # aug_pc = data_augmentation(pc)
                 # aug_tsdf = tsdf_cal(header, aug_pc)
                 # AUG_tsdf[i] = aug_tsdf
-
-            sio.savemat(os.path.join(sub_dir, 'Point_Cloud', '%s.mat' % ges),
-                        {'PC': POINT_CLOUD})
+            sio.savemat(os.path.join(pc_dir, 'Point_Cloud-%s.mat' % ges),
+                        {'pc': POINT_CLOUD})
             print('file %s-point_cloud saved' % ges)
-            sio.savemat(os.path.join(sub_dir, "TSDF", '%s.mat' % ges),
-                        {'TSDF': TSDF})
+            sio.savemat(os.path.join(sub_dir, 'TSDF-%s.mat' % ges),
+                        {
+                            'tsdf': TSDF,
+                            'max_l': MAX_L,
+                            'mid_p': MID_P
+            })
             print('file % s-TSDF.mat saved' % ges)
             # sio.savemat(os.path.join(sub_dir, "TSDF", '%s.mat' % ges),
             #             {'TSDF': AUG_tsdf})
             # print('file % s-AUG_tsdf.mat saved' % ges)
-        sio.savemat(os.path.join(SAVE_dir, '%s-ground_truth.mat' % sub),
-                    {'ground_truth': ground_truth})
-        print('gound_truth file saved.')
+            sio.savemat(os.path.join(sub_dir, 'ground_truth-%s.mat' % ges),
+                        {'ground_truth': ground_truth})
+            print('gound_truth file saved.')
+        sio.savemat(os.path.join(SAVE_dir, 'data_num-%s.mat' % sub),
+                    {'num': total_num})
+        print('total number saved.')
 
 
 def read_joint(f_dir):

@@ -8,21 +8,20 @@ from visualize import visualize
 fFocal_msra = 241.42
 
 
-def tsdf(header, point_cloud):
+def tsdf_f(header, depth, point_cloud):
     voxel_res = 32
     point_max, point_min = max_min_point(point_cloud)
 
-    point_mid = (point_max + point_min) / 2
+    mid_point = (point_max + point_min) / 2
     len_pixel = point_max - point_min
     max_lenth = np.max(len_pixel)
     voxel_len = max_lenth / voxel_res
     truncation = voxel_len * 3
-    vox_ori = point_mid - max_lenth / 2 + voxel_len / 2
+    vox_ori = mid_point - max_lenth / 2 + voxel_len / 2
     # tsdf calculation
-    depth = -point_cloud[2, :]
     tsdf_v = tsdf_cal(header, depth, vox_ori, voxel_len, truncation)
 
-    return tsdf_v
+    return tsdf_v, max_lenth, mid_point
 
 
 def max_min_point(hand_ori):

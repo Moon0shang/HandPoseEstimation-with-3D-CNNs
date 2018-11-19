@@ -6,7 +6,7 @@ from visualize import visualize
 fFocal_msra = 241.42
 
 
-def point_cloud(data):
+def point_cloud(data, point_num):
 
     header = data['header']
     depth = data['depth']
@@ -43,8 +43,25 @@ def point_cloud(data):
     #         valid_idx.append(num)
 
     # hand_points = hand_3d[:, valid_idx]
+    point_clouds = set_length(hand_3d, point_num)
 
-    return hand_3d
+    return hand_3d, point_clouds
+
+
+def set_length(data, point_num):
+    "set the point number"
+    point_shape = data.shape[1]
+
+    if point_shape < point_num:
+        rand_idx = np.arange(0, point_num, 1, dtype=np.int32)
+        rand_idx[point_shape:] = np.random.randint(0, point_shape,
+                                                   size=point_num - point_shape)
+    else:
+        rand_idx = np.random.randint(0, point_shape, size=point_num)
+
+    point_cloud = data[:, rand_idx]
+
+    return point_cloud
 
 
 if __name__ == "__main__":

@@ -27,9 +27,10 @@ class TsdfDataset(data.dataset):
         # self.total_frame_num = self.__total_frame_num()  # 从Volume Length中获取的长度
 
         # 初始化 python 数组
-
         self.tsdf = np.empty()
         self.ground_truth = np.empty()
+        self.max_l = np.empty()
+        self.mid_p = np.empty()
 
         self.start_index = 0
         self.end_index = 0
@@ -52,19 +53,25 @@ class TsdfDataset(data.dataset):
 
     def __getitem__(self, index):
         """still have problems"""
-        return self.tsdf[index, :, :, :, :]
+        return self.tsdf[index, :, :, :, :], self.ground_truth[index, :, :], self.max_l[index], slef.mid_p[index, :]
 
     def __len__(self):
         """still have problems"""
         return self.tsdf.size(0)
 
     def __loaddata(self, data_dir):
-        tsdf = sio.loadmat(os.path.join(data_dir, 'tsdf.mat'))
+        data = sio.loadmat(os.path.join(data_dir, 'tsdf.mat'))
+        tsdf = data['tsdf']
         ground_truth = sio.loadmat(os.path.join(data_dir, "ground truth.mat"))
         self.start_index = self.end_index + 1
-        self.end_index = self.end_index + len(point_cloud['Point_Cloud_FPS'])
+        self.end_index = self.end_index + len(tsdf)
 
-        self.tsdf[(self.start_index - 1):self.end_index, :, :] = point_cloud['tsdf'].astype(
+        self.tsdf[(self.start_index - 1):self.end_index, :, :, :, :] = tsdf.astype(
             np.float32)
-        self.ground_truth[(self.start_index - 1):self.end_index, :,
-                          :] = gt_data['ground_truth'].astype(np.float32)
+        self.ground_truth[(self.start_index - 1):self.end_index,
+                          :, :] = ground_truth['ground_truth'].astype(np.float32)
+        self.max_l[(self.start_index - 1):self.end_index] = data['max_l'].astype(np.float32)
+        self.mid_p[(self.start_index - 1):self.end_index,
+                   :] = data['mid_p'].astype(np.float32)
+
+    def __getlength(self, data_dir):
