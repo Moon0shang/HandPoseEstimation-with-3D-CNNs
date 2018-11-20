@@ -63,20 +63,19 @@ class MSRA_Dataset(data.dataset):
         files = sorted(os.listdir(data_dir))
 
         for ges in self.GESTURES:
-            data = sio.loadmat(os.path.join(data_dir, files[ges+17]))
+            # data = sio.loadmat(os.path.join(data_dir, files[ges+17]))
+            data = np.load(os.path.join(data_dir, files[ges+17]))
             tsdf = data['tsdf']
-            ground_truth = sio.loadmat(os.path.join(data_dir, files[ges]))
+            # ground_truth = sio.loadmat(os.path.join(data_dir, files[ges]))
+            ground_truth = np.load(os.path.join(data_dir, files[ges]))
             self.start_index = self.end_index
             self.end_index = self.end_index + tsdf.shape[0]
 
-            self.tsdf[self.start_index:self.end_index,
-                      :, :, :, :] = tsdf.astype(np.float32)
+            self.tsdf[self.start_index:self.end_index, :, :, :, :] = tsdf
             self.ground_truth[self.start_index:self.end_index,
-                              :] = ground_truth['ground_truth'].astype(np.float32)
-            self.max_l[self.start_index:self.end_index] = data['max_l'].astype(
-                np.float32)
-            self.mid_p[self.start_index:self.end_index,
-                       :] = data['mid_p'].astype(np.float32)
+                              :] = ground_truth
+            self.max_l[self.start_index:self.end_index] = data['max_l']
+            self.mid_p[self.start_index:self.end_index, :] = data['mid_p']
 
     def __getlength(self, data_dir):
         "need modify"
@@ -86,9 +85,10 @@ class MSRA_Dataset(data.dataset):
             total_num = 0
             for idx, name in enumerate(files):
                 if idx != self.test_idx:
-                    num = sio.loadmat(os.path.join(data_dir, name))
-                    total_num += num['num']
+                    # num = sio.loadmat(os.path.join(data_dir, name))
+                    num = np.load(os.path.join(data_dir, name))
+                    total_num += num
         else:
-            total_num = sio.loadmat(l_dir)
+            total_num = np.load(os.path.join(data_dir, files[self.test_idx]))
 
         return total_num
