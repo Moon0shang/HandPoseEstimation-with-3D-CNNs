@@ -83,15 +83,16 @@ def main():
                 # aug_tsdf = tsdf_cal(header, aug_pc)
                 # AUG_tsdf[i] = aug_tsdf
             np.save(os.path.join(pc_dir, 'Point_Cloud-%s.mat' % ges), POINT_CLOUD)
-            print('file %s-point_cloud saved' % ges)
+            # print('file %s-point_cloud saved' % ges)
             np.savez(os.path.join(sub_dir, 'TSDF-%s.mat' % ges),
                      tsdf=TSDF, max_l=MAX_L, mid_p=MID_P)
-            print('file % s-TSDF.mat saved' % ges)
+            # print('file % s-TSDF.mat saved' % ges)
             np.save(os.path.join(sub_dir, 'ground_truth-%s.mat' % ges),
                     ground_truth)
-            print('gound_truth file saved.')
+            # print('gound_truth file saved.')
+            print('%s-%s files saved.' % (sub, ges))
         np.save(os.path.join(SAVE_dir, 'data_num-%s.mat' % sub), total_num)
-        print('total number saved.')
+        print('%s total number saved.' % sub)
         #     sio.savemat(os.path.join(pc_dir, 'Point_Cloud-%s.mat' % ges),
         #                 {'pc': POINT_CLOUD})
         #     print('file %s-point_cloud saved' % ges)
