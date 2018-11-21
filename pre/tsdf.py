@@ -126,25 +126,3 @@ def tsdf_cal(header, depth, vox_ori, voxel_len, truncation):
                 tsdf_v[2, x, y, z] = tsdf_z
 
     return tsdf_v
-
-
-if __name__ == "__main__":
-    data = sio.loadmat('./result/P0.mat')
-    header = data['1'][0][0][0]
-    depth = data['1'][0][1][0]
-    sample = {
-        'header': header,
-        'depth': depth
-    }
-    pc = sio.loadmat('./result/pc1.mat')
-    pc = pc['pc']
-    tsdf_v = tsdf(header, pc)
-    sio.savemat('./tsdf.mat', {'tsdf': tsdf_v})
-    idx = np.where(tsdf_v[2, :, :, :] == 1)
-
-    px = idx[0]
-    py = idx[1]
-    pz = idx[2]
-
-    point_show = np.array([px, py, pz], dtype=np.float32)
-    visualize(point_show)

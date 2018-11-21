@@ -62,19 +62,3 @@ def set_length(data, point_num):
     point_cloud = data[:, rand_idx]
 
     return point_cloud
-
-
-if __name__ == "__main__":
-
-    data = sio.loadmat('./result/P0.mat')
-    header = data['1'][0][0][0]
-    depth = data['1'][0][1][0]
-    sample = {
-        'header': header,
-        'depth': depth
-    }
-    pc = point_cloud(sample)
-    sio.savemat('./result/pc1.mat', {
-        'pc': pc
-    })
-    visualize(pc)
