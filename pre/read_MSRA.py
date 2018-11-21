@@ -15,6 +15,7 @@ import os.path
 import numpy as np
 import scipy.io as sio
 
+from process import DataProcess
 # from data_aug import data_augmentation
 
 

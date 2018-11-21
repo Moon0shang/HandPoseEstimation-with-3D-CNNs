@@ -5,6 +5,7 @@ from pca import PCA
 class DataProcess(object):
     def __init__(self, data):
         self.fFocal_msra = 241.42
+        self.data = data
 
     def point_cloud(self, data, point_num):
 
@@ -50,6 +51,9 @@ class DataProcess(object):
     def gt_pca(self, pc):
         pass
 
+    def data_aug(self, data):
+        pass
+
     def set_length(self, data, point_num):
         "set the point number"
         point_shape = data.shape[0]
@@ -65,7 +69,7 @@ class DataProcess(object):
 
         return point_cloud
 
-    def tsdf_f(header, depth, point_cloud):
+    def tsdf_f(self, header, depth, point_cloud):
         voxel_res = 32
         point_max, point_min = max_min_point(point_cloud)
 
@@ -80,7 +84,7 @@ class DataProcess(object):
 
         return tsdf_v, max_lenth, mid_point
 
-    def max_min_point(hand_ori):
+    def max_min_point(self, hand_ori):
 
         # trying
         x = hand_ori[:, 0]
@@ -101,7 +105,7 @@ class DataProcess(object):
 
         return point_max, point_min
 
-    def tsdf_cal(header, depth, vox_ori, voxel_len, truncation):
+    def tsdf_cal(self, header, depth, vox_ori, voxel_len, truncation):
 
         img_width = header[0]
         img_height = header[1]
