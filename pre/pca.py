@@ -5,22 +5,21 @@ import numpy as np
 
 
 def PCA(data):
+    """PCA output coeff, score, latent like matlab pca do"""
     [n, p] = data.shape
     mean_data = np.mean(data, axis=0)
     data1 = data - mean_data
-    r = np.min(n - 1, p)
     [u, sigma, coeff] = np.linalg.svd(data1)
-    if n == 1:
-        sigma = sigma(1)
-    else:
-        sigma = np.diag(sigma)
-    sigma_t = np.transpose(sigma)
-    score = np.multiply(u, sigma_t)
-    sigma = np.dot(sigma, np.sqrt(n - 1))
+    u = u[:, :2]
+    coeff = np.transpose(coeff)
+    score = np.multiply(u, sigma)
+    sigma = sigma / np.sqrt(n - 1)
+
     if n <= p:
         sigma[n:p, 1] = 0
-        score[:, n:p] = 0
-    latent = np.power(sigma)
+        score[:, n: p] = 0
+
+    latent = np.power(sigma, 2).reshape(len(sigma), 1)
 
     return coeff, score, latent
 
@@ -118,3 +117,33 @@ def PCA(data):
 #         score = coeff * self.data
 
 #         return coeff, latent, score
+'''
+function [coeff, score, latent, tsquare] = ppp(x,econFlag)
+if nargin < 2, econFlag = 0; end
+[n,p] = size(x);
+# 矩阵减
+x0 = bsxfun(@minus,x,mean(x,1));
+r = min(n-1,p); % max possible rank of X0
+[U,sigma,coeff] = svd(x0,econFlag); % put in 1/sqrt(n-1) later
+if n == 1 % sigma might have only 1 row
+    sigma = sigma(1);
+else
+    sigma = diag(sigma);
+end
+
+# 矩阵乘
+score = bsxfun(@times,U,sigma转置); % == x0*coeff
+sigma = sigma ./ sqrt(n-1);
+if n <= p
+    if isequal(econFlag, 'econ')
+        sigma(n,:) = []; % make sure this shrinks as a column
+        coeff(:,n) = [];
+        score(:,n) = [];
+    else
+        sigma(n:p,1) = 0; % make sure this extends as a column
+        score(:,n:p) = 0;
+    end
+end
+
+latent = sigma.^2;
+'''
