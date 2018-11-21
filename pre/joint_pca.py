@@ -13,7 +13,8 @@ def PCA(data):
     mean_data = np.mean(data, axis=0)
     data1 = data - mean_data
     [u, sigma, coeff] = np.linalg.svd(data1)
-    u = u[:, :2]
+    col = len(sigma)
+    u = u[:, :col]
     coeff = np.transpose(coeff)
     score = np.multiply(u, sigma)
     sigma = sigma / np.sqrt(n - 1)
@@ -26,6 +27,11 @@ def PCA(data):
     return coeff, score, latent
 
 
+"""
+deal with ground truth, i just read it without any process, that's terrible!!!
+"""
+
+
 def joint_pca(joint_dir):
 
     subjects = sorted(os.listdir(joint_dir))
@@ -35,8 +41,10 @@ def joint_pca(joint_dir):
     for sub in subjects:
         for ges in gestures:
             data_dir = os.path.join(joint_dir, sub, ges)
-            ground_truth = np.load(data_dir).reshape(len(ground_truth), 3, 21)
-            temp1 = None  # permuate()
+            ground_truth = np.load(data_dir).reshape(len(ground_truth), 21, 3)
+            ground_truth[:, :, 2] = -ground_truth[:, :, 2]
+            temp1 = ground_truth.transpose((0, 2, 1))
+            temp1[]=
             temp2 = temp1.reshape(len(ground_truth), 63)
             if sub != subjects[test_index]:
                 joints = np.vstack(joints, temp2)

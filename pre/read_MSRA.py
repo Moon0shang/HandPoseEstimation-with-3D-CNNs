@@ -15,8 +15,6 @@ import os.path
 import numpy as np
 import scipy.io as sio
 
-from point_cloud import point_cloud
-from tsdf import tsdf_f
 # from data_aug import data_augmentation
 
 
@@ -93,25 +91,6 @@ def main():
             print('%s-%s files saved.' % (sub, ges))
         np.save(os.path.join(SAVE_dir, 'data_num-%s.npy' % sub), total_num)
         print('%s total number saved.' % sub)
-        #     sio.savemat(os.path.join(pc_dir, 'Point_Cloud-%s.mat' % ges),
-        #                 {'pc': POINT_CLOUD})
-        #     print('file %s-point_cloud saved' % ges)
-        #     sio.savemat(os.path.join(sub_dir, 'TSDF-%s.mat' % ges),
-        #                 {
-        #                     'tsdf': TSDF,
-        #                     'max_l': MAX_L,
-        #                     'mid_p': MID_P
-        #     })
-        #     print('file % s-TSDF.mat saved' % ges)
-        #     # sio.savemat(os.path.join(sub_dir, "TSDF", '%s.mat' % ges),
-        #     #             {'TSDF': AUG_tsdf})
-        #     # print('file % s-AUG_tsdf.mat saved' % ges)
-        #     sio.savemat(os.path.join(sub_dir, 'ground_truth-%s.mat' % ges),
-        #                 {'ground_truth': ground_truth})
-        #     print('gound_truth file saved.')
-        # sio.savemat(os.path.join(SAVE_dir, 'data_num-%s.mat' % sub),
-        #             {'num': total_num})
-        # print('total number saved.')
 
 
 def read_joint(f_dir):

@@ -1,9 +1,4 @@
 import numpy as np
-import numba as nb
-from numba import cuda
-import scipy.io as sio
-
-from visualize import visualize
 
 fFocal_msra = 241.42
 
@@ -27,9 +22,9 @@ def tsdf_f(header, depth, point_cloud):
 def max_min_point(hand_ori):
 
     # trying
-    x = hand_ori[0, :]
-    y = hand_ori[1, :]
-    z = hand_ori[2, :]
+    x = hand_ori[:, 0]
+    y = hand_ori[:, 1]
+    z = hand_ori[:, 2]
     # 防止出现max(z)= 0 的情况
     z = z[z != 0]
 
