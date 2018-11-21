@@ -58,9 +58,11 @@ def main():
             #     print('directory "%s" already exist!')
             file_dir = os.path.join(DB_dir, sub, ges)
             [bin_num, ground_truth] = read_joint(file_dir)
+            ground_truth_p = ground_truth.reshape(bin_num, 21, 3)
+            ground_truth_p[:, :, 3] = -ground_truth_p[:, :, 3]
             total_num += bin_num
 
-            point_num = 9000
+            point_num = 6000
             POINT_CLOUD = np.empty([bin_num, 3, point_num])
             TSDF = np.empty([bin_num, 3, 32, 32, 32])
             MAX_L = np.empty(bin_num)
@@ -72,12 +74,14 @@ def main():
                 # boundbox left,bb top, bb right, bb bottom
                 [header, depth] = read_bin(file_name)
                 data_single = {'header': header, 'depth': depth}
-                [hand_3d, pc] = point_cloud(data_single, point_num)
-                POINT_CLOUD[i] = pc
-                tsdf, max_l, mid_point = tsdf_f(header, depth, hand_3d)
-                TSDF[i] = tsdf
-                MAX_L[i] = max_l
-                MID_P[i] = mid_point
+                data_pre = DataProcess.process(
+                    data_single, ground_truth, point_num=point_num)
+                # [hand_3d, pc] = point_cloud(data_single, point_num)
+                POINT_CLOUD[i] = data_pre[0]
+                # tsdf, max_l, mid_point = tsdf_f(header, depth, hand_3d)
+                TSDF[i] = data_pre[1]
+                MAX_L[i] = data_pre[2]
+                MID_P[i] = data_pre[3]
                 # aug_pc = data_augmentation(pc)
                 # aug_tsdf = tsdf_cal(header, aug_pc)
                 # AUG_tsdf[i] = aug_tsdf

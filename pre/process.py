@@ -3,14 +3,30 @@ from pca import PCA
 
 
 class DataProcess(object):
-    def __init__(self, data):
+    def __init__(self, data, ground_truth, point_num=6000, aug=False):
         self.fFocal_msra = 241.42
         self.data = data
+        self.ground_truth = ground_truth
+        self.point_num = point_num
+        self.aug = aug
 
-    def point_cloud(self, data, point_num):
+    def process(self):
 
-        header = data['header']
-        depth = data['depth']
+        hand_points = self.point_cloud()
+        point_clouds = self.set_length(hand_points)
+        tsdf, max_l, mid_p = self.tsdf_f(point_clouds)
+
+        if self.aug:
+            hand_aug = self.data_aug(hand_points)
+            point_clouds_aug = self.set_length(hand_aug)
+            tsdf_aug, max_l_aug, mid_p_aug = self.tsdf_f(point_clouds_aug)
+
+        return point_clouds, tsdf, max_l, mid_p
+
+    def point_cloud(self):
+        "get point cloud from depth informations"
+        header = self.data['header']
+        depth = self.data['depth']
         valid_pixel_num = depth.size
         img_width = header[0]
         img_height = header[1]
@@ -30,33 +46,27 @@ class DataProcess(object):
 
         for h in range(bb_height):
             hand_3d[(h * bb_width):((h + 1) * bb_width), 0] = np.multiply(
-                (w_matrix + bb_left - (img_width / 2)), depth[h, :]) / fFocal_msra
+                (w_matrix + bb_left - (img_width / 2)), depth[h, :]) / self.fFocal_msra
 
         for w in range(bb_width):
             idx = [(hi * bb_width + w) for hi in range(bb_height)]
             # '-' get on the right position
             hand_3d[idx, 1] = -np.multiply(
-                (h_matrix+bb_top - (img_height / 2)), depth[:, w]) / fFocal_msra
-        # drop the useless point
-        # valid_idx = []
-        # for num in range(valid_pixel_num):
-        #     if any(hand_3d[:, num]):
-        #         valid_idx.append(num)
+                (h_matrix+bb_top - (img_height / 2)), depth[:, w]) / self.fFocal_msra
+            # drop the useless point
+        valid_idx = []
+        for num in range(hand_3d.shape[0]):
+            if any(hand_3d[num, :]):
+                valid_idx.append(num)
 
-        # hand_points = hand_3d[:, valid_idx]
-        point_clouds = set_length(hand_3d, point_num)
+        hand_points = hand_3d[valid_idx, :]
 
-        return hand_3d, point_clouds
+        return hand_points
 
-    def gt_pca(self, pc):
-        pass
-
-    def data_aug(self, data):
-        pass
-
-    def set_length(self, data, point_num):
+    def set_length(self, hand_points):
         "set the point number"
-        point_shape = data.shape[0]
+        point_num = self.point_num
+        point_shape = hand_points.shape[0]
 
         if point_shape < point_num:
             rand_idx = np.arange(0, point_num, 1, dtype=np.int32)
@@ -65,13 +75,14 @@ class DataProcess(object):
         else:
             rand_idx = np.random.randint(0, point_shape, size=point_num)
 
-        point_cloud = data[:, rand_idx]
+        point_cloud = hand_points[rand_idx, :]
 
         return point_cloud
 
-    def tsdf_f(self, header, depth, point_cloud):
+    def tsdf_f(self, point_cloud):
+
         voxel_res = 32
-        point_max, point_min = max_min_point(point_cloud)
+        point_max, point_min = self.max_min_point(point_cloud)
 
         mid_point = (point_max + point_min) / 2
         len_pixel = point_max - point_min
@@ -80,16 +91,15 @@ class DataProcess(object):
         truncation = voxel_len * 3
         vox_ori = mid_point - max_lenth / 2 + voxel_len / 2
         # tsdf calculation
-        tsdf_v = tsdf_cal(header, depth, vox_ori, voxel_len, truncation)
+        tsdf_v = self.tsdf_cal(vox_ori, voxel_len, truncation)
 
         return tsdf_v, max_lenth, mid_point
 
-    def max_min_point(self, hand_ori):
+    def max_min_point(self, point_cloud):
 
-        # trying
-        x = hand_ori[:, 0]
-        y = hand_ori[:, 1]
-        z = hand_ori[:, 2]
+        x = point_cloud[:, 0]
+        y = point_cloud[:, 1]
+        z = point_cloud[:, 2]
         # 防止出现max(z)= 0 的情况
         z = z[z != 0]
 
@@ -105,15 +115,15 @@ class DataProcess(object):
 
         return point_max, point_min
 
-    def tsdf_cal(self, header, depth, vox_ori, voxel_len, truncation):
+    def tsdf_cal(self, vox_ori, voxel_len, truncation):
 
-        img_width = header[0]
-        img_height = header[1]
+        depth = self.data['depth']
+        header = self.data['header']
         bb_left = header[2]
         bb_top = header[3]
         bb_right = header[4]
         bb_bottom = header[5]
-        bb_height = bb_bottom - bb_top
+        # bb_height = bb_bottom - bb_top
         bb_width = bb_right - bb_left
 
         x_center = 160
@@ -138,10 +148,9 @@ class DataProcess(object):
                     voxel_z = vox_ori[2] + z * voxel_len
 
                     # voxel center in image frame
-                    coeff = -fFocal_msra / voxel_z
+                    coeff = -self.fFocal_msra / voxel_z
                     pixel_x = int(voxel_x * coeff + x_center)
                     pixel_y = int(-voxel_y * coeff + y_center)
-                    '''need to modify'''
 
                     if pixel_x < bb_left or pixel_x >= bb_right or pixel_y < bb_top or pixel_y >= bb_bottom:
                         # print('out of valid area')
@@ -156,8 +165,7 @@ class DataProcess(object):
                         continue
 
                     # closest surface point in world frame
-
-                    coeff1 = pixel_depth / fFocal_msra
+                    coeff1 = pixel_depth / self.fFocal_msra
                     world_x = (pixel_x - x_center) * coeff1
                     world_y = -(pixel_y - y_center) * coeff1
                     world_z = -pixel_depth
@@ -186,3 +194,19 @@ class DataProcess(object):
                     tsdf_v[2, x, y, z] = tsdf_z
 
         return tsdf_v
+
+    def gt_pca(self, point_cloud, max_l):
+
+        [coeff, score, latent] = PCA(point_cloud)
+        joint_normalized = (self.ground_truth * coeff) / max_l
+
+        return joint_normalized
+
+    def xyz_pca(self, g_t):
+        pass
+
+    def data_aug(self, point_cloud):
+
+        point_clouds = None
+
+        return point_clouds
