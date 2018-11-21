@@ -10,7 +10,8 @@ def PCA(data):
     mean_data = np.mean(data, axis=0)
     data1 = data - mean_data
     [u, sigma, coeff] = np.linalg.svd(data1)
-    u = u[:, :2]
+    col = len(sigma)
+    u = u[:, :col]
     coeff = np.transpose(coeff)
     score = np.multiply(u, sigma)
     sigma = sigma / np.sqrt(n - 1)
