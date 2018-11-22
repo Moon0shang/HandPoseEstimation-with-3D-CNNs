@@ -2,6 +2,7 @@
 training
 """
 import os
+import shutil
 import random
 import logging
 import argparse
@@ -47,7 +48,7 @@ def init_parser():
                         help='how many samples do we load: small | full')
     parser.add_argument('--JOINT_NUM', type=int, default=21,
                         help='number of joints')
-    parser.add_argument('--test_index', type=int, default=0,
+    parser.add_argument('--test_index', type=int, default=3,
                         help='test index for cross validation, range: 0~8')
     parser.add_argument('--save_root_dir', type=str,
                         default='results',  help='output folder')
@@ -55,7 +56,10 @@ def init_parser():
                         help='model name for training resume')
     parser.add_argument('--optimizer', type=str, default='',
                         help='optimizer name for training resume')
-
+    parser.add_argument('-m', '--momentum', default=0.9, type=float, metavar='M',
+                        help='momentum (default: {})'.format(0.9))
+    parser.add_argument('-wd', '--weight-decay', default=0.0005, type=float,
+                        metavar='W', help='weight decay (default: {})'.format(0.0005))
     global opt
     opt = parser.parse_args()
 
@@ -95,25 +99,86 @@ def main():
     print(net)
 
     criterion = nn.MSELoss(size_average=True).cuda()
-    optimizer = optim.Adam(
+    optimizer = optim.SGD(
         net.parameters(),
         lr=opt.learning_rate,
-        betas=(0.5, 0.999),
-        eps=1e-06
-    )
+        momentum=opt.momentum,
+        weight_decay=opt.weight_decay)
 
     if opt.optimizer != '':
         optimizer.load_state_dict(torch.load(
             os.path.join(save_dir, opt.optimizer)))
 
     scheduler = lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.1)
-
+    best_result = 0
     for epoch in range(opt.nepoch):
-        pass
+        # adjust learning rate
+        scheduler.step(epoch)
+        print('======>>>>> Online epoch: #%d/%d, lr=%f, Test: %s <<<<<======' %
+              (epoch, opt.nepoch, scheduler.get_lr()[0], subject_names[opt.test_index]))
+        start_time = time()
+        losses, error_avg = train(net, train_dataloder,
+                                  criterion, optimizer, epoch)
+        end_time = time()
+        timer = (end_time-start_time)/len(train_data)
+        print('==> time to learn 1 sample = %f (ms)' % timer)
+        print('mean-square error of 1 sample: %f, #train_data = %d' %
+              (losses, len(train_data)))
+
+        if error_avg > best_result:
+            best_result = error_avg
+            state = {'epoch': epoch + 1,
+                     'state_dict': net.state_dict(),
+                     'best': best_result,
+                     'optimizer': optimizer.state_dict()}
+            torch.save(state, './check_point.pth.tar')
 
 
-def train():
-    pass
+def train(net, train_dataloder, criterion, optimizer, epoch):
+
+    losses = 0.0
+    errors = 0.0
+    # swich to train mode
+    torch.cuda.synchronize()
+    net.train()
+
+    for i, data in enumerate(train_dataloder):
+
+        # load input and target
+        tsdf, ground_truth, max_l, mid_p = data
+        mid_p = mid_p.unsqueeze(1)
+        max_l = max_l.unsqueeze(1)
+        batch_size = tsdf.size(0)
+        # normalize target to [0,1]
+        target = (ground_truth.view(batch_size, -1, 3) -
+                  mid).view(batch_size, -1) / max_l + 0.5
+        target[target < 0] = 0
+        target[target >= 1] = 1
+
+        tsdf_var = Variable(tsdf)
+        target_var = Variable(ground_truth)
+
+        output = net(tsdf_var)
+
+        # record loss
+        loss = criterion(output, target_var)
+        losses += loss.data[0]
+
+        # measure accuracy
+        # unnormalize output to original sapce
+        "need to complete"
+        output = ((output.data.cuda() - 0.5) *
+                  max_l).view(batch_size, -1, 3) + mid_p
+        output = output.view(batch_size, -1)
+        err_t = accuracy_error_thresh_portion_batch(output, target)
+        errors += err_t
+
+        # compute gradient and do SGD step
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+    return losses, errors/batch_size
 
 
 def evaluate():
@@ -122,6 +187,24 @@ def evaluate():
 
 def visualize():
     pass
+
+
+def save_checkpoint(state, is_best):
+    torch.save(state, file_nema)
+    if is_best:
+        shutil.copyfile(filename, 'best.tar')
+
+
+def accuracy_error_thresh_portion_batch(output, target, t=30.0):
+    batch_size = target.size(0)
+    sample_size = target.size(1)
+    diff = torch.abs(output-target).view(batch_size, -1, 3)
+    sqr_sum = torch.sum(torch.pow(diff, 2), 2)
+    out = torch.zeros(sqr_sum.size())
+    t = t**2
+    out[sqr_sum < t] = 1
+    good = torch.sum(out)/(out.size(1)*batch_size)
+    return good*100
 
 
 if __name__ == "__main__":

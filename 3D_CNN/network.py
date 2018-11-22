@@ -28,12 +28,12 @@ class _DenseLayer(nn.Sequential):
 
 
 class _DenseBlock(nn.Sequential):
-    def __init__(self, layers, in_feature, bn_size, growth_rate, drop_rate)
-    super(_DenseBlock, self).__init__()
-    for i in range(layers):
-        layer = _DenseLayer(in_feature + i * growth_rate,
-                            growth_rate, bn_size, drop_rate)
-        self.add_module('dense_layer%d' % (i + 1), layer)
+    def __init__(self, layers, in_feature, bn_size, growth_rate, drop_rate):
+        super(_DenseBlock, self).__init__()
+        for i in range(layers):
+            layer = _DenseLayer(in_feature + i * growth_rate,
+                                growth_rate, bn_size, drop_rate)
+            self.add_module('dense_layer%d' % (i + 1), layer)
 
 
 class _Transition(nn.Sequential):
