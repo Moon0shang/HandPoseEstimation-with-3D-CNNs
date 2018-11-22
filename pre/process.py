@@ -1,12 +1,11 @@
 import numpy as np
-from pca import PCA
 
 
 class DataProcess(object):
-    def __init__(self, data, ground_truth, point_num=6000, aug=False):
+
+    def __init__(self, data, point_num=6000, aug=False):
         self.fFocal_msra = 241.42
         self.data = data
-        self.ground_truth = ground_truth
         self.point_num = point_num
         self.aug = aug
 
@@ -17,11 +16,15 @@ class DataProcess(object):
         tsdf, max_l, mid_p = self.tsdf_f(point_clouds)
 
         if self.aug:
-            hand_aug = self.data_aug(hand_points)
+            hand_aug, ground_truth_aug = self.data_aug(hand_points)
             point_clouds_aug = self.set_length(hand_aug)
             tsdf_aug, max_l_aug, mid_p_aug = self.tsdf_f(point_clouds_aug)
+            data_pre = [point_clouds, tsdf, max_l, mid_p,
+                        point_clouds_aug, tsdf_aug, max_l_aug, mid_p_aug, ground_truth_aug]
+        else:
+            data_pre = [point_clouds, tsdf, max_l, mid_p]
 
-        return point_clouds, tsdf, max_l, mid_p
+        return data_pre
 
     def point_cloud(self):
         "get point cloud from depth informations"
@@ -195,18 +198,15 @@ class DataProcess(object):
 
         return tsdf_v
 
-    def gt_pca(self, point_cloud, max_l):
+    def data_aug(self, point_clouds):
 
-        [coeff, score, latent] = PCA(point_cloud)
-        joint_normalized = (self.ground_truth * coeff) / max_l
+        point_clouds_aug = None
+        ground_truth_aug = self.joint_aug()
 
-        return joint_normalized
+        return point_clouds_aug, ground_truth_aug
 
-    def xyz_pca(self, g_t):
-        pass
+    def joint_aug(self):
 
-    def data_aug(self, point_cloud):
+        ground_truth_aug = None
 
-        point_clouds = None
-
-        return point_clouds
+        return ground_truth_aug

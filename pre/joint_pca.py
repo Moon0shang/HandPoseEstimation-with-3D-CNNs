@@ -21,34 +21,33 @@ def PCA(data):
 
     if n <= p:
         sigma[n:p, 1] = 0
+        score[:, n: p] = 0
 
-    latent = np.power(sigma, 2)  # .reshape(len(sigma),1)
+    latent = np.power(sigma, 2).reshape(len(sigma), 1)
 
     return coeff, score, latent
 
 
-"""
-deal with ground truth, i just read it without any process, that's terrible!!!
-"""
+def joint_pca():
 
+    result = './result'
+    subjects = sorted(os.listdir(result))[:9]
+    gestures = sorted(os.listdir(os.path.join(
+        result, subjects[0], 'ground_truth')))
 
-def joint_pca(joint_dir):
+    for test in range(9):
+        joints_pca = np.empty(63)
+        for sub in subjects:
+            for ges in gestures:
+            ground_truth = np.load(os.path.join(
+                result, sub, 'ground_truth', ges))
+            ground_truth = ground_truth.reshape(ground_truth.shape[0], 63)
 
-    subjects = sorted(os.listdir(joint_dir))
-    gestures = sorted(os.listdir(os.path.join(joint_dir, subjects[0])))
+            if subjects[test] != sub:
+                joints_pca = np.vstack((joints_pca, ground_truth))
 
-    joints = []
-    for sub in subjects:
-        for ges in gestures:
-            data_dir = os.path.join(joint_dir, sub, ges)
-            ground_truth = np.load(data_dir).reshape(len(ground_truth), 21, 3)
-            ground_truth[:, :, 2] = -ground_truth[:, :, 2]
-            temp1 = ground_truth.transpose((0, 2, 1))
-            temp1[]=
-            temp2 = temp1.reshape(len(ground_truth), 63)
-            if sub != subjects[test_index]:
-                joints = np.vstack(joints, temp2)
-    coeff, score, latent = PCA(joints)
-    PCA_mean = np.mean(joints, 0)
-    # save datas
-    np.savez(save_dir, coeff=coeff, PCA_mean=PCA_mean, latent=latent)
+        joints_pca = joints_pca[1:]
+        coeff, score, latent = PCA(joints_pca)
+        pca_mean = np.mean(joints_pca, 0)
+        np.savez('./PCA-%s' % test, pca_mean=pca_mean,
+                 coeff=coeff, latent=latent)

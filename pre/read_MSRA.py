@@ -9,6 +9,9 @@ I assume here need to have the following parts:
 3. convert the store data into tsdf data
 4. data augmentation(rotate and stretch)
 5. visualize the point cloud and tsdf
+
+this preprocess have 2 related files, process and the pca
+the other files exist before the merge, now the previous two files contains all of them.
 """
 import os
 import os.path
@@ -16,12 +19,13 @@ import numpy as np
 import scipy.io as sio
 
 from process import DataProcess
-# from data_aug import data_augmentation
+from joint_pca import joint_pca
 
-
+# files directions
 DB_dir = '/home/x/DB/MSRA HandPoseDataset/cvpr15_MSRAHandGestureDB/'
 SAVE_dir = './result'
-PC_dir = './PC'
+# set whether to do data augmentation
+AUG = False
 
 
 def main():
@@ -40,7 +44,7 @@ def main():
     # stores the number of bin files and the ground truth infomation
     for sub in subject:
         sub_dir = os.path.join(SAVE_dir, sub)
-        pc_dir = os.path.join(PC_dir, sub)
+        # pc_dir = os.path.join(PC_dir, sub)
         try:
             os.mkdir(sub_dir)
             os.mkdir(pc_dir)
@@ -58,16 +62,21 @@ def main():
             #     print('directory "%s" already exist!')
             file_dir = os.path.join(DB_dir, sub, ges)
             [bin_num, ground_truth] = read_joint(file_dir)
-            ground_truth_p = ground_truth.reshape(bin_num, 21, 3)
-            ground_truth_p[:, :, 3] = -ground_truth_p[:, :, 3]
+            ground_truth = ground_truth.reshape(bin_num, 21, 3)
+            ground_truth[:, :, 2] = -ground_truth[:, :, 2]
             total_num += bin_num
 
-            point_num = 6000
+            if AUG:
+                POINT_CLOUD_AUG = np.empty([bin_num, 3, point_num])
+                TSDF_AUG = np.empty([bin_num, 3, 32, 32, 32])
+                MAX_L_AUG = np.empty(bin_num)
+                MID_P_AUG = np.empty([bin_num, 3])
+
             POINT_CLOUD = np.empty([bin_num, 3, point_num])
             TSDF = np.empty([bin_num, 3, 32, 32, 32])
             MAX_L = np.empty(bin_num)
             MID_P = np.empty([bin_num, 3])
-            # AUG_tsdf = np.empty([bin_num, 3, 32, 32, 32])
+            point_num = 6000
             for i in range(bin_num):
                 file_name = os.path.join(file_dir, '%06d_depth.bin' % i)
                 # for the header, the order is image width, image height,
@@ -75,24 +84,31 @@ def main():
                 [header, depth] = read_bin(file_name)
                 data_single = {'header': header, 'depth': depth}
                 data_pre = DataProcess.process(
-                    data_single, ground_truth, point_num=point_num)
-                # [hand_3d, pc] = point_cloud(data_single, point_num)
+                    data_single, point_num=point_num, aug=AUG)
+
                 POINT_CLOUD[i] = data_pre[0]
-                # tsdf, max_l, mid_point = tsdf_f(header, depth, hand_3d)
                 TSDF[i] = data_pre[1]
                 MAX_L[i] = data_pre[2]
                 MID_P[i] = data_pre[3]
-                # aug_pc = data_augmentation(pc)
-                # aug_tsdf = tsdf_cal(header, aug_pc)
-                # AUG_tsdf[i] = aug_tsdf
-            np.save(os.path.join(pc_dir, 'Point_Cloud-%s.npy' % ges), POINT_CLOUD)
-            # print('file %s-point_cloud saved' % ges)
-            np.savez(os.path.join(sub_dir, 'TSDF-%s.npz' % ges),
+                if AUG:
+                    POINT_CLOUD_AUG[i] = data_pre[4]
+                    TSDF_AUG[i] = data_pre[5]
+                    MAX_L_AUG[i] = data_pre[6]
+                    MID_P_AUG[i] = data_pre[7]
+                    ground_truth_aug = data_pre[8]
+            np.save(os.path.join(sub_dir, 'Point_Cloud', '%s.npy' % ges),
+                    POINT_CLOUD)
+            np.savez(os.path.join(sub_dir, 'TSDF', '%s.npz' % ges),
                      tsdf=TSDF, max_l=MAX_L, mid_p=MID_P)
-            # print('file % s-TSDF.mat saved' % ges)
-            np.save(os.path.join(sub_dir, 'ground_truth-%s.npy' % ges),
+            np.save(os.path.join(sub_dir, 'ground_truth', '%s.npy' % ges),
                     ground_truth)
-            # print('gound_truth file saved.')
+            if AUG:
+                np.save(os.path.join(sub_dir, 'Point_Cloud_aug', '%s.npy' % ges),
+                        POINT_CLOUD_AUG)
+                np.savez(os.path.join(sub_dir, 'TSDF_aug', '%s.npz' % ges),
+                         tsdf=TSDF_AUG, max_l=MAX_L_AUG, mid_p=MID_P_AUG)
+                np.save(os.path.join(sub_dir, 'ground_truth_aug', '%s.npy' % ges),
+                        ground_truth_aug)
             print('%s-%s files saved.' % (sub, ges))
         np.save(os.path.join(SAVE_dir, 'data_num-%s.npy' % sub), total_num)
         print('%s total number saved.' % sub)
@@ -125,3 +141,4 @@ def read_bin(f_name):
 if __name__ == '__main__':
 
     main()
+    joint_pca()
