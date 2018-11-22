@@ -39,12 +39,12 @@ def joint_pca():
         joints_pca = np.empty(63)
         for sub in subjects:
             for ges in gestures:
-            ground_truth = np.load(os.path.join(
-                result, sub, 'ground_truth', ges))
-            ground_truth = ground_truth.reshape(ground_truth.shape[0], 63)
+                ground_truth = np.load(os.path.join(
+                    result, sub, 'ground_truth', ges))
+                ground_truth = ground_truth.reshape(ground_truth.shape[0], 63)
 
-            if subjects[test] != sub:
-                joints_pca = np.vstack((joints_pca, ground_truth))
+                if subjects[test] != sub:
+                    joints_pca = np.vstack((joints_pca, ground_truth))
 
         joints_pca = joints_pca[1:]
         coeff, score, latent = PCA(joints_pca)
