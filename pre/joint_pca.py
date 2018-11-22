@@ -49,5 +49,9 @@ def joint_pca():
         joints_pca = joints_pca[1:]
         coeff, score, latent = PCA(joints_pca)
         pca_mean = np.mean(joints_pca, 0)
-        np.savez('./PCA-%s' % test, pca_mean=pca_mean,
+        try:
+            os.mkdir('./PCA')
+        except:
+            print('failed create PCA')
+        np.savez('./PCA', '%s' % test, pca_mean=pca_mean,
                  coeff=coeff, latent=latent)
