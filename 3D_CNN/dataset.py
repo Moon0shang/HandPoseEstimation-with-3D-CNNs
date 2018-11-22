@@ -60,7 +60,7 @@ class MSRA_Dataset(data.dataset):
 
     def __getitem__(self, index):
         """return index data"""
-        return self.tsdf[index, :, :, :, :], self.ground_truth[index, :], self.max_l[index], self.mid_p[index, :]
+        return self.tsdf[index, :, :, :, :], self.ground_truth[index, :],self.ground_truth_pca[index,:], self.max_l[index], self.mid_p[index, :]
 
     def __len__(self):
         """to get all data number"""

@@ -27,39 +27,58 @@ from network import DenseNet
 
 def init_parser():
     parser = argparse.ArgumentParser(description='3D Hand Pose Estimation')
+    "write my own ones"
     parser.add_argument('--batchSize', type=int,
-                        default=32, help='input batch size')
+                        default=16, help='input batch size')
     parser.add_argument('--workers', type=int, default=0,
                         help='number of data loading workers')
     parser.add_argument('--nepoch', type=int, default=60,
                         help='number of epochs to train for')
-    parser.add_argument('--ngpu', type=int, default=1, help='# GPUs')
-    # CUDA_VISIBLE_DEVICES=0 python train.py
-    parser.add_argument('--main_gpu', type=int, default=0, help='main GPU id')
     parser.add_argument('--learning_rate', type=float,
-                        default=0.001, help='learning rate at t=0')
+                        default=0.01, help='learning rate at t=0')
     parser.add_argument('--momentum', type=float, default=0.9,
                         help='momentum (SGD only)')
     parser.add_argument('--weight_decay', type=float,
                         default=0.0005, help='weight decay (SGD only)')
-    parser.add_argument('--learning_rate_decay', type=float,
-                        default=1e-7, help='learning rate decay')
     parser.add_argument('--size', type=str, default='full',
                         help='how many samples do we load: small | full')
-    parser.add_argument('--JOINT_NUM', type=int, default=21,
-                        help='number of joints')
     parser.add_argument('--test_index', type=int, default=3,
                         help='test index for cross validation, range: 0~8')
-    parser.add_argument('--save_root_dir', type=str,
-                        default='results',  help='output folder')
-    parser.add_argument('--model', type=str, default='',
-                        help='model name for training resume')
     parser.add_argument('--optimizer', type=str, default='',
                         help='optimizer name for training resume')
-    parser.add_argument('-m', '--momentum', default=0.9, type=float, metavar='M',
-                        help='momentum (default: {})'.format(0.9))
-    parser.add_argument('-wd', '--weight-decay', default=0.0005, type=float,
-                        metavar='W', help='weight decay (default: {})'.format(0.0005))
+    # depends on the dataset's ground truth joint numbers, here is 21*3
+    parser.add_argument('--PCA_SZ', type=int, default=63,
+                        help='number of PCA components')
+    # parser.add_argument('--batchSize', type=int,
+    #                     default=32, help='input batch size')
+    # parser.add_argument('--workers', type=int, default=0,
+    #                     help='number of data loading workers')
+    # parser.add_argument('--nepoch', type=int, default=60,
+    #                     help='number of epochs to train for')
+    # parser.add_argument('--ngpu', type=int, default=1, help='# GPUs')
+    # # CUDA_VISIBLE_DEVICES=0 python train.py
+    # parser.add_argument('--main_gpu', type=int, default=0, help='main GPU id')
+    # parser.add_argument('--learning_rate', type=float,
+    #                     default=0.001, help='learning rate at t=0')
+    # parser.add_argument('--momentum', type=float, default=0.9,
+    #                     help='momentum (SGD only)')
+    # parser.add_argument('--weight_decay', type=float,
+    #                     default=0.0005, help='weight decay (SGD only)')
+    # parser.add_argument('--learning_rate_decay', type=float,
+    #                     default=1e-7, help='learning rate decay')
+    # parser.add_argument('--size', type=str, default='full',
+    #                     help='how many samples do we load: small | full')
+    # parser.add_argument('--JOINT_NUM', type=int, default=21,
+    #                     help='number of joints')
+    # parser.add_argument('--test_index', type=int, default=3,
+    #                     help='test index for cross validation, range: 0~8')
+    # parser.add_argument('--save_root_dir', type=str,
+    #                     default='results',  help='output folder')
+    # parser.add_argument('--model', type=str, default='',
+    #                     help='model name for training resume')
+    # parser.add_argument('--optimizer', type=str, default='',
+    #                     help='optimizer name for training resume')
+
     global opt
     opt = parser.parse_args()
 
@@ -108,7 +127,7 @@ def main():
     if opt.optimizer != '':
         optimizer.load_state_dict(torch.load(
             os.path.join(save_dir, opt.optimizer)))
-
+    # auto adjust learning rate, divided by 10 after 50 rpoch
     scheduler = lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.1)
     best_result = 0
     for epoch in range(opt.nepoch):
@@ -145,13 +164,13 @@ def train(net, train_dataloder, criterion, optimizer, epoch):
     for i, data in enumerate(train_dataloder):
 
         # load input and target
-        tsdf, ground_truth, max_l, mid_p = data
+        tsdf, ground_truth, ground_truth_pca, max_l, mid_p = data
         mid_p = mid_p.unsqueeze(1)
         max_l = max_l.unsqueeze(1)
         batch_size = tsdf.size(0)
         # normalize target to [0,1]
         target = (ground_truth.view(batch_size, -1, 3) -
-                  mid).view(batch_size, -1) / max_l + 0.5
+                  mid_p).view(batch_size, -1) / max_l + 0.5
         target[target < 0] = 0
         target[target >= 1] = 1
 
