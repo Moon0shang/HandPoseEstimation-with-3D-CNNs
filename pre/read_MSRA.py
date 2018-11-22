@@ -47,19 +47,27 @@ def main():
         # pc_dir = os.path.join(PC_dir, sub)
         try:
             os.mkdir(sub_dir)
-            # os.mkdir(pc_dir)
             print('create directory "%s".' % sub)
         except:
             print('directory "%s" already exist!' % sub)
-        # ground_truth = []
+
+        try:
+            os.mkdir(os.path.join(sub_dir, 'Point_Cloud'))
+            os.mkdir(os.path.join(sub_dir, 'TSDF'))
+            os.mkdir(os.path.join(sub_dir, 'ground_truth'))
+        except:
+            print('failed create saved files')
+
+        if AUG:
+            try:
+                os.mkdir(os.path.join(sub_dir, 'Point_Cloud_aug'))
+                os.mkdir(os.path.join(sub_dir, 'TSDF_aug'))
+                os.mkdir(os.path.join(sub_dir, 'ground_truth_aug'))
+            except:
+                print('failed create aug files')
+
         total_num = 0
         for ges in gesture:
-            # ges_dir = os.path.join(sub_dir, ges)
-            # try:
-            #     os.mkdir(ges_dir)
-            #     print('create directory "%s".' % ges)
-            # except:
-            #     print('directory "%s" already exist!')
             file_dir = os.path.join(DB_dir, sub, ges)
             [bin_num, ground_truth] = read_joint(file_dir)
             ground_truth = ground_truth.reshape(bin_num, 21, 3)
@@ -97,12 +105,6 @@ def main():
                     MAX_L_AUG[i] = data_pre[6]
                     MID_P_AUG[i] = data_pre[7]
                     ground_truth_aug = data_pre[8]
-            try:
-                os.mkdir(os.path.join(sub_dir, 'Point_Cloud'))
-                os.mkdir(os.path.join(sub_dir, 'TSDF'))
-                os.mkdir(os.path.join(sub_dir, 'ground_truth'))
-            except:
-                print('failed create saved files')
 
             np.save(os.path.join(sub_dir, 'Point_Cloud', '%s.npy' % ges),
                     POINT_CLOUD)
@@ -110,19 +112,15 @@ def main():
                      tsdf=TSDF, max_l=MAX_L, mid_p=MID_P)
             np.save(os.path.join(sub_dir, 'ground_truth', '%s.npy' % ges),
                     ground_truth)
+
             if AUG:
-                try:
-                    os.mkdir(os.path.join(sub_dir, 'Point_Cloud_aug'))
-                    os.mkdir(os.path.join(sub_dir, 'TSDF_aug'))
-                    os.mkdir(os.path.join(sub_dir, 'ground_truth_aug'))
-                except:
-                    print('failed create aug files')
                 np.save(os.path.join(sub_dir, 'Point_Cloud_aug', '%s.npy' % ges),
                         POINT_CLOUD_AUG)
                 np.savez(os.path.join(sub_dir, 'TSDF_aug', '%s.npz' % ges),
                          tsdf=TSDF_AUG, max_l=MAX_L_AUG, mid_p=MID_P_AUG)
                 np.save(os.path.join(sub_dir, 'ground_truth_aug', '%s.npy' % ges),
                         ground_truth_aug)
+
             print('%s-%s files saved.' % (sub, ges))
         np.save(os.path.join(SAVE_dir, 'data_num-%s.npy' % sub), total_num)
         print('%s total number saved.' % sub)
