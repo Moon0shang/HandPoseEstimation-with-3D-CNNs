@@ -174,7 +174,7 @@ def train(net, extra_data, train_dataloder, criterion, optimizer):
         # joint = ground_truth in dataset file, cause the spell is too long
         tsdf, joint, joint_pca, max_l, mid_p = data
         b_size = len(tsdf)
-        joint_pca = Variable(joint_pca.requires_grad=False).cuda()
+        joint_pca = Variable(joint_pca, requires_grad=False).cuda()
         tsdf, joint = tdsf.cuda(), joint.cuda()
         max_l, mid_p = max_l.cuda(), mid_p.cuda()
         tsdf = Variable(tsdf, requires_grad=False)
@@ -239,7 +239,7 @@ def evaluate(net, extra_data, test_dataloder, criterion, optimizer):
         # joint = ground_truth in dataset file, cause the spell is too long
         tsdf, joint, joint_pca, max_l, mid_p = data
         b_size = len(tsdf)
-        joint_pca = Variable(joint_pca.requires_grad=False).cuda()
+        joint_pca = Variable(joint_pca, requires_grad=False).cuda()
         tsdf, joint = tdsf.cuda(), joint.cuda()
         max_l, mid_p = max_l.cuda(), mid_p.cuda()
         tsdf = Variable(tsdf, requires_grad=False)
