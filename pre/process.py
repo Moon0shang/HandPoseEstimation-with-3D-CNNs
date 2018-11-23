@@ -199,6 +199,11 @@ class DataProcess(object):
         return tsdf_v
 
     def data_aug(self, point_clouds):
+        """
+        data augmentation: contain stretch and rotation
+        stretch factor: x, y: [2/3,3/2]; z: 1
+        rotation factor: theta x,y: [-30d,30d]; theta z: [-180d,180d]
+        """
 
         point_clouds_aug = None
         ground_truth_aug = self.joint_aug()
