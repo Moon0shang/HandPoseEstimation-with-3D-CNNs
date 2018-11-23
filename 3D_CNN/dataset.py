@@ -5,7 +5,6 @@ import os
 import os.path
 import torch
 import numpy as np
-import scipy.io as sio
 import torch.utils.data as data
 
 
@@ -15,8 +14,7 @@ class MSRA_Dataset(data.dataset):
         self.train = train
         self.size = opt.size  # load 样本的数量，full /small
         self.test_idx = opt.test_idx
-        self.JOINT_NUM = opt.JOINT_NUM  # joint 数量，默认为 21
-        self.PCA_SZ = opt.PCA_SZ  # PCA 成分数量大小，默认为 42(int)
+        self.PCA_SZ = opt.PCA_SZ  # PCA 成分数量大小，默认为 63(int)
 
         if self.size == 'full':
             self.SUBJECTS = 9
@@ -60,7 +58,7 @@ class MSRA_Dataset(data.dataset):
 
     def __getitem__(self, index):
         """return index data"""
-        return self.tsdf[index, :, :, :, :], self.ground_truth[index, :],self.ground_truth_pca[index,:], self.max_l[index], self.mid_p[index, :]
+        return self.tsdf[index, :, :, :, :], self.ground_truth[index, :], self.ground_truth_pca[index, :], self.max_l[index], self.mid_p[index, :]
 
     def __len__(self):
         """to get all data number"""
@@ -79,10 +77,8 @@ class MSRA_Dataset(data.dataset):
             os.path.join(data_dir, 'ground_truth%s' % s)))
 
         for ges in self.GESTURES:
-            # data = sio.loadmat(os.path.join(data_dir, files[ges+17]))
             data = np.load(os.path.join(data_dir, tsdf_file[ges+17]))
             tsdf = data['tsdf']
-            # ground_truth = sio.loadmat(os.path.join(data_dir, files[ges]))
             ground_truth = np.load(os.path.join(data_dir, g_file[ges]))
             self.start_index = self.end_index
             self.end_index = self.end_index + tsdf.shape[0]
@@ -101,7 +97,6 @@ class MSRA_Dataset(data.dataset):
             total_num = 0
             for idx, name in enumerate(files):
                 if idx != self.test_idx:
-                    # num = sio.loadmat(os.path.join(data_dir, name))
                     num = np.load(os.path.join(data_dir, name))
                     total_num += num
         else:
@@ -116,7 +111,7 @@ class MSRA_Dataset(data.dataset):
         self.PCA_mean = torch.from_numpy(data['pca_mean'])
         self.PCA_coeff = torch.from_numpy(data['coeff'][:, 0:self.PCA_SZ])
         # 将一列的值扩展至 joint_num 列
-        tmp = self.PCA_mean.expand(self.total_frame_num, self.JOINT_NUM * 3)
+        tmp = self.PCA_mean.expand(self.total_frame_num, 63)
         tmp_demean = self.ground_truth - tmp
         # 矩阵相乘
         self.ground_truth_pca = torch.mm(tmp_demean, self.PCA_coeff)

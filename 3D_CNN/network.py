@@ -1,8 +1,6 @@
-# import re
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-# import torch.utils.model_zoo as model_zoo
 from collections import OrderedDict
 
 
@@ -17,7 +15,7 @@ class _DenseLayer(nn.Sequential):
         self.add_module('relu2', nn.ReLU(inplace=True)),
         self.add_module('conv2', nn.Conv3d(bn_size * growth_rate, growth_rate,
                                            kernel_size=3, stride=1, padding=1, bias=False)),
-        # self.drop_rate = drop_rate
+        self.drop_rate = drop_rate
 
     def forward(self, x):
         new_features = super(_DenseLayer, self).forward(x)
@@ -28,9 +26,9 @@ class _DenseLayer(nn.Sequential):
 
 
 class _DenseBlock(nn.Sequential):
-    def __init__(self, layers, in_feature, bn_size, growth_rate, drop_rate):
+    def __init__(self, layer_num, in_feature, bn_size, growth_rate, drop_rate):
         super(_DenseBlock, self).__init__()
-        for i in range(layers):
+        for i in range(layer_num):
             layer = _DenseLayer(in_feature + i * growth_rate,
                                 growth_rate, bn_size, drop_rate)
             self.add_module('dense_layer%d' % (i + 1), layer)
@@ -68,15 +66,15 @@ class DenseNet(nn.Module):
             ])
         )
         feature_num = init_feature
-        for i, layers in enumerate(block_config):
-            block = _DenseBlock(layers, feature_num, bn_size,
+        for i, layer_num in enumerate(block_config):
+            block = _DenseBlock(layer_num, feature_num, bn_size,
                                 growth_rate, drop_rate)
             self.features.add_module('dense_block%d' % (i + 1), block)
-            feature_num = feature_num + layers * growth_rate
+            feature_num = feature_num + layer_num * growth_rate
             if i != len(block_config) - 1:
                 trans = _Transition(
-                    in_feature=in_feature,
-                    out_feature=out_feature//2
+                    in_feature=feature_num,
+                    out_feature=feature_num//2
                 )
                 self.features.add_module('transition%d' % (i + 1), trans)
                 feature_num = feature_num // 2
@@ -86,6 +84,17 @@ class DenseNet(nn.Module):
 
         # linear layer
         # self.classifier = nn.Linear(feature_num, class_num)
+
+        # full connect net output features
+        self.net_FC = nn.Sequential(
+            nn.Linear(170 * 4 * 4 * 4, 4096),
+            nn.ReLU(inplace=True),
+            nn.Dropout(inplace=True),
+            nn.Linear(4096, 1024),
+            nn.ReLU(inplace=True),
+            nn.Dropout(inplace=True),
+            nn.Linear(1024, 63)
+        )
 
         # official init from
         for m in self.modules():
@@ -103,12 +112,18 @@ class DenseNet(nn.Module):
         # out = F.avg_pool3d(out, kernel_size=7, stride=1).view(
         #     features.size(0), -1)
         # out = self.classifier(out)
-        out = F.linear(170 * 4 * 4 * 4, 4096)
-        out = F.relu(out)
-        out = F.dropout(out)
-        out = F.linear(4096, 1024)
-        out = F.relu(out)
-        out = F.dropout(out)
-        out = F.linear(1024, 21*3)
+        out = self.net_FC(features)
+        # out = F.linear(170 * 4 * 4 * 4, 4096)
+        # out = F.relu(out)
+        # out = F.dropout(out)
+        # out = F.linear(4096, 1024)
+        # out = F.relu(out)
+        # out = F.dropout(out)
+        # out = F.linear(1024, 21*3)
 
         return out
+
+
+if __name__ == "__main__":
+    net = DenseNet()
+    print(net)
