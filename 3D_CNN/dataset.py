@@ -8,13 +8,14 @@ import numpy as np
 import torch.utils.data as data
 
 
-class MSRA_Dataset(data.dataset):
-    def __init__(self, root_path, opt, train=True):
+class MSRA_Dataset(data.Dataset):
+    def __init__(self, root_path, opt,  train=True, aug=False):
         self.root_path = root_path
         self.train = train
         self.size = opt.size  # load 样本的数量，full /small
-        self.test_idx = opt.test_idx
+        self.test_idx = opt.test_index
         self.PCA_SZ = opt.PCA_SZ  # PCA 成分数量大小，默认为 63(int)
+        self.AUG = aug
 
         if self.size == 'full':
             self.SUBJECTS = 9
@@ -52,9 +53,20 @@ class MSRA_Dataset(data.dataset):
                 print('Training aug: ' + data_dir)
                 self.__loaddata(data_dir, aug=True)
 
-        self.tsdf = torch.from_numpy(self.tsdf)
-        self.ground_truth = torch.from_numpy(self.ground_truth)
+        # self.total_num = self.tsdf.size(0)
         self.__loadPCA()
+
+        self.tsdf = torch.from_numpy(self.tsdf)
+        self.ground_truth = torch.from_numpy(
+            self.ground_truth).type(torch.FloatTensor)
+        self.max_l = torch.from_numpy(self.max_l)
+        self.mid_p = torch.from_numpy(self.mid_p)
+        self.ground_truth = torch.from_numpy(self.ground_truth_pca)
+        self.PCA_mean = torch.from_numpy(self.PCA_mean)
+        self.PCA_coeff = torch.from_numpy(self.PCA_coeff)
+
+        # self.total_num = self.tsdf.size(0)
+        # self.__loadPCA()
 
     def __getitem__(self, index):
         """return index data"""
@@ -76,16 +88,17 @@ class MSRA_Dataset(data.dataset):
         g_file = sorted(os.listdir(
             os.path.join(data_dir, 'ground_truth%s' % s)))
 
-        for ges in self.GESTURES:
-            data = np.load(os.path.join(data_dir, tsdf_file[ges+17]))
+        for ges in range(self.GESTURES):
+            data = np.load(os.path.join(data_dir, 'TSDF', tsdf_file[ges]))
             tsdf = data['tsdf']
-            ground_truth = np.load(os.path.join(data_dir, g_file[ges]))
+            ground_truth = np.load(os.path.join(
+                data_dir, 'ground_truth', g_file[ges]))
             self.start_index = self.end_index
             self.end_index = self.end_index + tsdf.shape[0]
 
             self.tsdf[self.start_index:self.end_index, :, :, :, :] = tsdf
             self.ground_truth[self.start_index:self.end_index,
-                              :] = ground_truth
+                              :] = ground_truth.reshape(-1, 63)
             self.max_l[self.start_index:self.end_index] = data['max_l']
             self.mid_p[self.start_index:self.end_index, :] = data['mid_p']
 
@@ -108,13 +121,18 @@ class MSRA_Dataset(data.dataset):
 
         files = os.listdir('./PCA')
         data = np.load(os.path.join('./PCA', files[self.test_idx]))
-        self.PCA_mean = torch.from_numpy(data['pca_mean'])
-        self.PCA_coeff = torch.from_numpy(data['coeff'][:, 0:self.PCA_SZ])
-        # 将一列的值扩展至 joint_num 列
-        tmp = self.PCA_mean.expand(self.total_frame_num, 63)
-        tmp_demean = self.ground_truth - tmp
-        # 矩阵相乘
-        self.ground_truth_pca = torch.mm(tmp_demean, self.PCA_coeff)
-        # 转置 transpose(dim1, dim2)
-        self.PCA_coeff = self.PCA_coeff.transpose(0, 1).cuda()
-        self.PCA_mean = self.PCA_mean.cuda()
+
+        self.PCA_mean = data['pca_mean'].astype(np.float32)
+        self.PCA_coeff = data['coeff'][:, 0:self.PCA_SZ].astype(np.float32)
+        tmp = self.ground_truth - self.PCA_mean
+        # np.dot(tmp, self.PCA_coeff)
+        self.ground_truth_pca = np.dot(tmp, self.PCA_coeff)
+        self.PCA_coeff = self.PCA_coeff.transpose(0, 1)
+        # # 将一列的值扩展至 joint_num 列
+        # tmp = self.PCA_mean.expand(self.total_num, 63)
+        # tmp_demean = self.ground_truth.cuda() - tmp.cuda()
+        # # 矩阵相乘
+        # self.ground_truth_pca = torch.mm(tmp_demean, self.PCA_coeff)
+        # # 转置 transpose(dim1, dim2)
+        # self.PCA_coeff = self.PCA_coeff.transpose(0, 1).cuda()
+        # self.PCA_mean = self.PCA_mean.cuda()

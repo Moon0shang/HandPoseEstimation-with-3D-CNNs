@@ -87,7 +87,7 @@ class DenseNet(nn.Module):
 
         # full connect net output features
         self.net_FC = nn.Sequential(
-            nn.Linear(170 * 4 * 4 * 4, 4096),
+            nn.Linear(174080, 4096),
             nn.ReLU(inplace=True),
             nn.Dropout(inplace=True),
             nn.Linear(4096, 1024),
@@ -97,14 +97,14 @@ class DenseNet(nn.Module):
         )
 
         # official init from
-        for m in self.modules():
-            if isinstance(m, nn.Conv3d):
-                nn.init.kaiming_normal_(m.weight)
-            elif isinstance(m, nn.BatchNorm3d):
-                nn.init.constant_(m.weight, 1)
-                nn.init.constant_(m.bias, 0)
-            elif isinstance(m, nn.Linear):
-                nn.init.constant_(m.bias, 0)
+        # for m in self.modules():
+        #     if isinstance(m, nn.Conv3d):
+        #         nn.init.kaiming_normal_(m.weight)
+        #     elif isinstance(m, nn.BatchNorm3d):
+        #         nn.init.constant_(m.weight, 1)
+        #         nn.init.constant_(m.bias, 0)
+        #     elif isinstance(m, nn.Linear):
+        #         nn.init.constant_(m.bias, 0)
 
     def forward(self, x):
         features = self.features(x)
@@ -112,6 +112,7 @@ class DenseNet(nn.Module):
         # out = F.avg_pool3d(out, kernel_size=7, stride=1).view(
         #     features.size(0), -1)
         # out = self.classifier(out)
+        # features = features.view(-1, 174080)
         out = self.net_FC(features)
         # out = F.linear(170 * 4 * 4 * 4, 4096)
         # out = F.relu(out)
