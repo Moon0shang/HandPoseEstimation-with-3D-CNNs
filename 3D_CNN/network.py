@@ -80,21 +80,21 @@ class DenseNet(nn.Module):
                 feature_num = feature_num // 2
 
         # final batch norm
-        # self.features.add_module('norm5', nn.BatchNorm3d(feature_num))
+        self.features.add_module('norm5', nn.BatchNorm3d(feature_num))
 
         # linear layer
         # self.classifier = nn.Linear(feature_num, class_num)
 
         # full connect net output features
-        self.net_FC = nn.Sequential(
-            nn.Linear(174080, 4096),
+        self.FC1 = nn.Sequential(
+            nn.Linear(170*4*4*4, 4096),
             nn.ReLU(inplace=True),
-            nn.Dropout(inplace=True),
+        )
+        self.FC2 = nn.Sequential(
             nn.Linear(4096, 1024),
             nn.ReLU(inplace=True),
-            nn.Dropout(inplace=True),
-            nn.Linear(1024, 63)
         )
+        self.FC3 = nn.Linear(1024, 63)
 
         # official init from
         # for m in self.modules():
@@ -112,8 +112,12 @@ class DenseNet(nn.Module):
         # out = F.avg_pool3d(out, kernel_size=7, stride=1).view(
         #     features.size(0), -1)
         # out = self.classifier(out)
-        # features = features.view(-1, 174080)
-        out = self.net_FC(features)
+        features = features.view(-1, 170*4*4*4)
+        out = self.FC1(features)
+        out = F.dropout(out)
+        out = self.FC2(out)
+        out = F.dropout(out)
+        out = self.FC3(out)
         # out = F.linear(170 * 4 * 4 * 4, 4096)
         # out = F.relu(out)
         # out = F.dropout(out)
