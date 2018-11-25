@@ -3,7 +3,7 @@ import numpy as np
 
 class DataProcess(object):
 
-    def __init__(self, data, point_num=6000, aug=False):
+    def __init__(self, data, ground_truth, point_num=6000, aug=False):
         self.fFocal_msra = 241.42
         self.data = data
         self.ground_truth = ground_truth
@@ -199,7 +199,7 @@ class DataProcess(object):
 
         return tsdf_v
 
-    def data_aug(self, point_clouds, ground_truth):
+    def data_aug(self, point_clouds):
         """
         data augmentation: contain stretch and rotation
         stretch factor: x, y: [2/3,3/2]; z: 1
@@ -207,7 +207,7 @@ class DataProcess(object):
         """
         # stretch factor
         stretch_xy = np.random.uniform(2 / 3, 3 / 2)
-        stretch = np.array([stretch_f, stretch_f, 1])
+        stretch = np.array([stretch_xy, stretch_xy, 1])
         # diag matrix
         S = np.diag(stretch)
 

@@ -27,14 +27,15 @@ def joint_pca(aug=False):
     for test in range(9):
 
         if aug:
-            joints1 = read_joints(subjects, gestures)
-            joints2 = read_joints(subjects, gestures, fs='ground_truth_aug')
-            joints_pca = np.vstack(joints1, joints2)
+            joints1 = nor_joint(subjects, gestures, test)
+            joints2 = nor_joint(subjects, gestures,
+                                test, fs='ground_truth_aug')
+            joints_pca = np.vstack((joints1, joints2))
             pca_mean, coeff = cal_pca(joint_pca, aug)
             np.savez('./PCA', '%s-aug.npz' % test,
                      pca_mean=pca_mean, coeff=coeff)
         else:
-            joints_pca = read_joints(subjects, gestures)
+            joints_pca = nor_joint(subjects, gestures, test)
             pca_mean, coeff = cal_pca(joint_pca, aug)
             np.savez('./PCA', '%s.npz' % test, pca_mean=pca_mean, coeff=coeff)
 
@@ -53,8 +54,9 @@ def cal_pca(joints_pca, aug):
     return pca_mean, coeff
 
 
-def nor_joint(subjects, gestures, fs=''):
+def nor_joint(subjects, gestures, test, fs=''):
 
+    result = '/result'
     joints_pca = np.empty(63)
     for sub in subjects:
         for ges in gestures:
@@ -65,7 +67,7 @@ def nor_joint(subjects, gestures, fs=''):
             max_l = data['max_l']
             mid_p = data['mid_p']
 
-            for data in len(ground_truth):
+            for i in len(ground_truth):
                 gt_nor = (ground_truth[i]-mid_p[i])/max_l[i]+0.5
 
             gt_nor = gt_nor.reshape(ground_truth.shape[0], 63)

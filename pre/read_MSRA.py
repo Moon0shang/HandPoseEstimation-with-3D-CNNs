@@ -80,15 +80,15 @@ def main():
             # ground_truth[:, :, 2] = -ground_truth[:, :, 2]
             total_num += bin_num
 
-            point_num = 6000
+            points_num = 6000
             if AUG:
-                POINT_CLOUD_AUG = np.empty([bin_num, point_num, 3])
+                POINT_CLOUD_AUG = np.empty([bin_num, points_num, 3])
                 TSDF_AUG = np.empty([bin_num, 3, 32, 32, 32])
                 MAX_L_AUG = np.empty(bin_num)
                 MID_P_AUG = np.empty([bin_num, 3])
                 ground_truth_aug = np.empty(ground_truth.shape)
 
-            POINT_CLOUD = np.empty([bin_num, point_num, 3])
+            POINT_CLOUD = np.empty([bin_num, points_num, 3])
             TSDF = np.empty([bin_num, 3, 32, 32, 32])
             MAX_L = np.empty(bin_num)
             MID_P = np.empty([bin_num, 3])
@@ -100,7 +100,7 @@ def main():
                 [header, depth] = read_bin(file_name)
                 data_single = {'header': header, 'depth': depth}
                 DP = DataProcess(data_single, ground_truth[i, :],
-                                 point_num=point_num, aug=AUG)
+                                 points_num, aug=AUG)
                 data_pre = DP.process()
 
                 POINT_CLOUD[i] = data_pre[0]

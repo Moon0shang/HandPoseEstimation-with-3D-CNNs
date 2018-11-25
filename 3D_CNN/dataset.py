@@ -89,7 +89,7 @@ class MSRA_Dataset(data.Dataset):
     def __loaddata(self, data_dir, laug=False):
         "load data from preprocess files"
 
-        if aug:
+        if laug:
             s = '_aug'
         else:
             s = ''

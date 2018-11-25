@@ -83,10 +83,10 @@ def main():
     logging.info('======================================================')
 
     # load data
-    train_data = MSRA_Dataset(root_path='./result', opt=opt, train=True)
+    train_data = MSRA_Dataset(root_path='./result',  train=True)
     train_dataloder = DataLoader(
         train_data, batch_size=opt.batchSize, shuffle=True, num_workers=int(opt.workers))
-    test_data = MSRA_Dataset(root_path='./result', opt=opt, train=False)
+    test_data = MSRA_Dataset(root_path='./result',  train=False)
     test_dataloder = DataLoader(
         test_data, batch_size=opt.batchSize, shuffle=False, num_workers=int(opt.workers))
     print('#Train data:', len(train_data), '#Test data:', len(test_data))
@@ -351,7 +351,7 @@ def evaluate(net, extra_data, test_dataloder, criterion, optimizer):
 
         # infromation output
         if i % 10 == 0:
-            print('Train:[%d/%d]\t' % (i, len(train_dataloder)),
+            print('Train:[%d/%d]\t' % (i, len(test_dataloder)),
                   'Loss:%.4f\t' % loss.item(),
                   'Proportion:%.3f' % proportion)
 
