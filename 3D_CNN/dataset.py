@@ -75,7 +75,7 @@ class MSRA_Dataset(data.Dataset):
 
         if self.size == 'full':
             tt_data = [self.tsdf[index, :, :, :, :], self.ground_truth[index, :],
-                       self.max_l[index], self.mid_p[index, :], slef.ground_truth_pca[index, :]]
+                       self.max_l[index], self.mid_p[index, :], self.ground_truth_pca[index, :]]
         else:
             tt_data = [self.tsdf[index, :, :, :, :], self.ground_truth[index, :],
                        self.max_l[index], self.mid_p[index, :]]
@@ -108,15 +108,18 @@ class MSRA_Dataset(data.Dataset):
             ground_truth = np.load(os.path.join(
                 data_dir, 'ground_truth', g_file[ges]))
             ground_truth = ground_truth.astype(np.float32)
-            # g_t = ground_truth.reshape(-1, 63)
+            # ground_truth[:, :, 2] = -ground_truth[:, :, 2]
+            # ground_truth = ground_truth.reshape(-1, 63)
+
             # index order
             self.start_index = self.end_index+1
             self.end_index = self.end_index + tsdf.shape[0]
 
-            self.tsdf[(self.start_index-1):self.end_index, :, :, :, :] = tsdf
-            self.ground_truth[(self.start_index-1)                              :self.end_index, :] = ground_truth
-            self.max_l[(self.start_index-1):self.end_index] = max_l
-            self.mid_p[(self.start_index-1):self.end_index, :] = mid_p
+            self.tsdf[self.start_index:self.end_index, :, :, :, :] = tsdf
+            self.ground_truth[self.start_index:self.end_index,
+                              :] = ground_truth
+            self.max_l[self.start_index:self.end_index] = max_l
+            self.mid_p[self.start_index:self.end_index, :] = mid_p
 
     def __getlength(self, data_dir):
         "get length of each subject"

@@ -39,7 +39,7 @@ def init_parser():
                         help='number of data loading workers')
     parser.add_argument('--nepoch', type=int, default=5,
                         help='number of epochs to train for')
-    parser.add_argument('--learning_rate', type=float, default=0.01,
+    parser.add_argument('--learning_rate', type=float, default=0.005,
                         help='learning rate at t=0')
     parser.add_argument('--size', type=str, default='small',
                         help='how many samples do we load: small | full')
@@ -114,7 +114,10 @@ def main():
     scheduler = lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.1)
 
     # some extra datas
-    extra_data = [train_data.PCA_mean, train_data.PCA_coeff]
+    if opt.size == 'full':
+        extra_data = [train_data.PCA_mean, train_data.PCA_coeff]
+    else:
+        extra_data = None
     train_len = len(train_data)
     test_len = len(test_data)
 
@@ -189,10 +192,10 @@ def train(net, extra_data, train_dataloder, criterion, optimizer):
             tsdf, joint, max_l, mid_p, joint_pca = data
             b_size = len(tsdf)
             tsdf = Variable(tsdf, requires_grad=False).cuda()
-            joint_pca = Variable(joint_pca, requires_grad=False).cuda()
+            joint_pca = Variable(joint_pca, requires_grad=False)
             # 3.1.2 compute output
             optimizer.zero_grad()
-            estimation = net(inputs_level1, inputs_level1_center)
+            estimation = net(tsdf)
             loss = criterion(estimation, joint_pca)*opt.PCA_SZ
 
             # 3.1.3 compute gradient and do SGD step
@@ -201,34 +204,34 @@ def train(net, extra_data, train_dataloder, criterion, optimizer):
             torch.cuda.synchronize()
 
             # 3.1.4 update training error
-            train_mse = train_mse + loss.data[0]*len(points)
+            train_mse = train_mse + loss.data[0] * b_size
 
             # 3.1.5 compute error in world cs
-            ml = max_l.unsequeeze(1)
-            mp = mid_p.unsequeeze(1)
+            ml = max_l.unsqueeze(1)
+            mp = mid_p.unsqueeze(1)
             outputs_nor = PCA_mean.expand(
                 estimation.data.size(0), PCA_mean.size(1))
-            # addmm: out = outputs_xyz+estimation.data*train_data.PCA_coeff
+            # addmm: out = outputs_nor+estimation.data*train_data.PCA_coeff
             outputs_nor = torch.addmm(
-                outputs_xyz, estimation.data.cpu(), PCA_coeff)
+                outputs_nor, estimation.data.cpu(), PCA_coeff)
             output = ((outputs_nor - 0.5) * ml).view(b_size, -1, 3) + mp
             proportion, err_mean = cal_out(output, joint, b_size)
-        elif opt.size == 'samll':
+        elif opt.size == 'small':
             tsdf, joint, max_l, mid_p = data
             b_size = len(tsdf)
             tsdf = Variable(tsdf, requires_grad=False).cuda()
 
             # joint transfer and normalization
             joint1 = joint.view(b_size, -1, 3)
-            joint_nor = torch.FloatTensor(joint.size()).cuda()
-
+            joint_nor = torch.FloatTensor(joint1.size())
+            max_l, mid_p = max_l.cuda(), mid_p.cuda()
             for b in range(b_size):
                 joint_nor[b] = (joint1[b] - mid_p[b]) / max_l[b] + 0.5
 
             joint_nor[joint_nor < 0] = 0
             joint_nor[joint_nor > 1] = 1
             joint_nor = joint_nor.view(b_size, -1)
-            joint_nor = Variable(joint_nor, requires_grad=False)
+            joint_nor = Variable(joint_nor, requires_grad=False).cuda()
 
             # compute output
             optimizer.zero_grad()
@@ -244,9 +247,9 @@ def train(net, extra_data, train_dataloder, criterion, optimizer):
             train_mse = train_mse + loss.item() * b_size
 
             # calculate error threshod
-            ml = max_l.unsequeeze(1)
-            mp = mid_p.unsequeeze(1)
-            output = ((estimation.data.cpu() - 0.5)
+            ml = max_l.unsqueeze(1)
+            mp = mid_p.unsqueeze(1)
+            output = ((estimation.data - 0.5)
                       * ml).view(b_size, -1, 3) + mp
             proportion, err_mean = cal_out(output, joint, b_size)
         else:
@@ -256,7 +259,7 @@ def train(net, extra_data, train_dataloder, criterion, optimizer):
         # infromation output
         if i % 10 == 0:
             print('Train:[%d/%d]\t' % (i, len(train_dataloder)),
-                  'Loss:%.4f\t' % loss.itme(),
+                  'Loss:%.4f\t' % loss.item(),
                   'Proportion:%.3f' % proportion)
 
     torch.cuda.synchronize()
@@ -268,7 +271,6 @@ def train(net, extra_data, train_dataloder, criterion, optimizer):
 
 def evaluate(net, extra_data, test_dataloder, criterion, optimizer):
 
-    [PCA_mean, PCA_coeff] = extra_data
     torch.cuda.synchronize()
     net.eval()
     test_mse = 0.0
@@ -283,10 +285,10 @@ def evaluate(net, extra_data, test_dataloder, criterion, optimizer):
             tsdf, joint, max_l, mid_p, joint_pca = data
             b_size = len(tsdf)
             tsdf = Variable(tsdf, requires_grad=False).cuda()
-            joint_pca = Variable(joint_pca, requires_grad=False).cuda()
+            joint_pca = Variable(joint_pca, requires_grad=False)
             # 3.1.2 compute output
             optimizer.zero_grad()
-            estimation = net(inputs_level1, inputs_level1_center)
+            estimation = net(tsdf)
             loss = criterion(estimation, joint_pca)*opt.PCA_SZ
 
             # 3.1.3 compute gradient and do SGD step
@@ -295,34 +297,34 @@ def evaluate(net, extra_data, test_dataloder, criterion, optimizer):
             torch.cuda.synchronize()
 
             # 3.1.4 update training error
-            train_mse = train_mse + loss.data[0]*len(points)
+            train_mse = train_mse + loss.data[0] * b_size
 
             # 3.1.5 compute error in world cs
-            ml = max_l.unsequeeze(1)
-            mp = mid_p.unsequeeze(1)
+            ml = max_l.unsqueeze(1)
+            mp = mid_p.unsqueeze(1)
             outputs_nor = PCA_mean.expand(
                 estimation.data.size(0), PCA_mean.size(1))
-            # addmm: out = outputs_xyz+estimation.data*train_data.PCA_coeff
+            # addmm: out = outputs_nor+estimation.data*train_data.PCA_coeff
             outputs_nor = torch.addmm(
-                outputs_xyz, estimation.data.cpu(), PCA_coeff)
+                outputs_nor, estimation.data.cpu(), PCA_coeff)
             output = ((outputs_nor - 0.5) * ml).view(b_size, -1, 3) + mp
             proportion, err_mean = cal_out(output, joint, b_size)
-        elif opt.size == 'samll':
+        elif opt.size == 'small':
             tsdf, joint, max_l, mid_p = data
             b_size = len(tsdf)
             tsdf = Variable(tsdf, requires_grad=False).cuda()
 
             # joint transfer and normalization
             joint1 = joint.view(b_size, -1, 3)
-            joint_nor = torch.FloatTensor(joint.size()).cuda()
-
+            joint_nor = torch.FloatTensor(joint1.size())
+            max_l, mid_p = max_l.cuda(), mid_p.cuda()
             for b in range(b_size):
                 joint_nor[b] = (joint1[b] - mid_p[b]) / max_l[b] + 0.5
 
             joint_nor[joint_nor < 0] = 0
             joint_nor[joint_nor > 1] = 1
             joint_nor = joint_nor.view(b_size, -1)
-            joint_nor = Variable(joint_nor, requires_grad=False)
+            joint_nor = Variable(joint_nor, requires_grad=False).cuda()
 
             # compute output
             optimizer.zero_grad()
@@ -338,9 +340,9 @@ def evaluate(net, extra_data, test_dataloder, criterion, optimizer):
             train_mse = train_mse + loss.item() * b_size
 
             # calculate error threshod
-            ml = max_l.unsequeeze(1)
-            mp = mid_p.unsequeeze(1)
-            output = ((estimation.data.cpu() - 0.5)
+            ml = max_l.unsqueeze(1)
+            mp = mid_p.unsqueeze(1)
+            output = ((estimation.data - 0.5)
                       * ml).view(b_size, -1, 3) + mp
             proportion, err_mean = cal_out(output, joint, b_size)
         else:
@@ -350,7 +352,7 @@ def evaluate(net, extra_data, test_dataloder, criterion, optimizer):
         # infromation output
         if i % 10 == 0:
             print('Train:[%d/%d]\t' % (i, len(train_dataloder)),
-                  'Loss:%.4f\t' % loss.itme(),
+                  'Loss:%.4f\t' % loss.item(),
                   'Proportion:%.3f' % proportion)
 
     torch.cuda.synchronize()
@@ -373,6 +375,7 @@ def cal_out(output, joint, b_size):
     good = torch.sum(out) / (out.size(1) * b_size)
     # error in world corrdinate system
     err_mean = torch.mean(sqrt_sum, 1).view(-1, 1)
+    err_mean = torch.sum(err_mean)
 
     return good * 100, err_mean
 
