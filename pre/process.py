@@ -6,6 +6,7 @@ class DataProcess(object):
     def __init__(self, data, point_num=6000, aug=False):
         self.fFocal_msra = 241.42
         self.data = data
+        self.ground_truth = ground_truth
         self.point_num = point_num
         self.aug = aug
 
@@ -198,20 +199,41 @@ class DataProcess(object):
 
         return tsdf_v
 
-    def data_aug(self, point_clouds):
+    def data_aug(self, point_clouds, ground_truth):
         """
         data augmentation: contain stretch and rotation
         stretch factor: x, y: [2/3,3/2]; z: 1
         rotation factor: theta x,y: [-30d,30d]; theta z: [-180d,180d]
         """
+        # stretch factor
+        stretch_xy = np.random.uniform(2 / 3, 3 / 2)
+        stretch = np.array([stretch_f, stretch_f, 1])
+        # diag matrix
+        S = np.diag(stretch)
 
-        point_clouds_aug = None
-        ground_truth_aug = self.joint_aug()
+        # rotate factor
+        rot_xy = np.random.uniform(-np.pi / 18, np.pi / 18)
+        rot_z = np.random.uniform(-np.pi / 6, np.pi / 6)
+        # x, y matrix
+        xy_c = np.cos(rot_xy)
+        xy_s = np.sin(rot_xy)
+        R_x = np.array([[1, 0, 0], [0, xy_c, xy_s], [0, -xy_s, xy_c]])
+        R_y = np.array([[xy_c, 0, -xy_s], [0, 1, 0], [xy_s, 0, xy_c]])
+        z_c = np.cos(rot_z)
+        z_s = np.sin(rot_z)
+        R_z = np.array([[xy_c, xy_s, 0], [-xy_s, xy_c, 0], [0, 0, 1]])
+        # rotation matrix
+        R = np.dot(R_x, R_y)
+        R = np.dot(R, R_z)
+
+        # ground truth augmentation
+        joints = self.ground_truth(-1, 3)
+        ground_truth_aug = np.dot(joints, S)
+        ground_truth_aug = np.dot(ground_truth_aug, R)
+        ground_truth_aug = ground_truth_aug.reshape(-1)
+
+        # point cloud augmentation
+        point_clouds_aug = np.dot(point_clouds, S)
+        point_clouds_aug = np.dot(point_clouds_aug, R)
 
         return point_clouds_aug, ground_truth_aug
-
-    def joint_aug(self):
-
-        ground_truth_aug = None
-
-        return ground_truth_aug

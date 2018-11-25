@@ -1,6 +1,10 @@
 """
 perform PCA on the transformed and normalized joint loacations 
 in the ground truth of trainning dataset 
+
+
+there are some problem with my pca function
+so use matlab pca instead!!!
 """
 import os
 import os.path
@@ -58,21 +62,26 @@ def joint_pca():
         # pca_mean = np.mean(joints_pca, 0)
         # np.savez('./PCA', '%s' % test, pca_mean=pca_mean,
         #          coeff=coeff, latent=latent)
-        """
-        there are some problem with my pca function
-        so use matlab pca instead!!!
-        t={'1','2','3','4','5','6','7','8','9'};
-        pca_dir='/home/x/Codes/mat';
-        for test = 1:9
-            file_dir = [pca_dir '/' t{test} '/joint.mat'];
-            load(file_dir);
-            [coeff,score,latent]=pca(joint);
-            pca_mean=mean(joint,1);
-            save([pca_dir '/' t{test} '-pca_mean.mat'],'pca_mean');
-            save([pca_dir '/' t{test} '-coeff.mat'],'coeff');
-            save([pca_dir '/' t{test} '-latent.mat'],'latent');
-        end
-        """
+
+
+"""
+there are some problem with my pca function
+so use matlab pca instead!!!
+
+########### Matlab program #########################
+t={'1','2','3','4','5','6','7','8','9'};
+pca_dir='/home/x/Codes/mat';
+for test = 1:9
+    file_dir = [pca_dir '/' t{test} '/joint.mat'];
+    load(file_dir);
+    [coeff,score,latent]=pca(joint);
+    pca_mean=mean(joint,1);
+    save([pca_dir '/' t{test} '-pca_mean.mat'],'pca_mean');
+    save([pca_dir '/' t{test} '-coeff.mat'],'coeff');
+    save([pca_dir '/' t{test} '-latent.mat'],'latent');
+end
+########### Matlab program #########################
+"""
 
 
 def merge_pca():

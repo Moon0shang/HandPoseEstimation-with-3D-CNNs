@@ -113,13 +113,13 @@ class MSRA_Dataset(data.Dataset):
             ground_truth = np.load(os.path.join(
                 data_dir, 'ground_truth', g_file[ges]))
             ground_truth = ground_truth.astype(np.float32)
-            g_t = ground_truth.reshape(-1, 63)
+            # g_t = ground_truth.reshape(-1, 63)
             # index order
             self.start_index = self.end_index+1
             self.end_index = self.end_index + tsdf.shape[0]
 
             self.tsdf[(self.start_index-1):self.end_index, :, :, :, :] = tsdf
-            self.ground_truth[(self.start_index-1):self.end_index, :] = g_t
+            self.ground_truth[(self.start_index-1):self.end_index, :] = ground_truth
             self.max_l[(self.start_index-1):self.end_index] = max_l
             self.mid_p[(self.start_index-1):self.end_index, :] = mid_p
 

@@ -19,7 +19,7 @@ import numpy as np
 import scipy.io as sio
 
 from process import DataProcess
-from joint_pca import joint_pca
+from joint_pca import *
 
 # files directions
 DB_dir = '/home/x/DB/MSRA HandPoseDataset/cvpr15_MSRAHandGestureDB/'
@@ -70,8 +70,8 @@ def main():
         for ges in gesture:
             file_dir = os.path.join(DB_dir, sub, ges)
             [bin_num, ground_truth] = read_joint(file_dir)
-            ground_truth = ground_truth.reshape(bin_num, 21, 3)
-            ground_truth[:, :, 2] = -ground_truth[:, :, 2]
+            # ground_truth = ground_truth.reshape(bin_num, 21, 3)
+            # ground_truth[:, :, 2] = -ground_truth[:, :, 2]
             total_num += bin_num
 
             point_num = 6000
@@ -80,6 +80,7 @@ def main():
                 TSDF_AUG = np.empty([bin_num, 3, 32, 32, 32])
                 MAX_L_AUG = np.empty(bin_num)
                 MID_P_AUG = np.empty([bin_num, 3])
+                ground_truth_aug = np.empty(ground_truth.shape)
 
             POINT_CLOUD = np.empty([bin_num, point_num, 3])
             TSDF = np.empty([bin_num, 3, 32, 32, 32])
@@ -92,7 +93,8 @@ def main():
                 # boundbox left,bb top, bb right, bb bottom
                 [header, depth] = read_bin(file_name)
                 data_single = {'header': header, 'depth': depth}
-                DP = DataProcess(data_single, point_num=point_num, aug=AUG)
+                DP = DataProcess(data_single, ground_truth[i, :],
+                                 point_num=point_num, aug=AUG)
                 data_pre = DP.process()
 
                 POINT_CLOUD[i] = data_pre[0]
@@ -104,7 +106,7 @@ def main():
                     TSDF_AUG[i] = data_pre[5]
                     MAX_L_AUG[i] = data_pre[6]
                     MID_P_AUG[i] = data_pre[7]
-                    ground_truth_aug = data_pre[8]
+                    ground_truth_aug[i] = data_pre[8]
 
             np.save(os.path.join(sub_dir, 'Point_Cloud', '%s.npy' % ges),
                     POINT_CLOUD)
@@ -154,3 +156,8 @@ if __name__ == '__main__':
 
     main()
     joint_pca()
+
+    "after use Matlab process the ground truth data"
+    Use_Matlab = False
+    if Use_Matlab:
+        merge_pca()
