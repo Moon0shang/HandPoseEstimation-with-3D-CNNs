@@ -12,6 +12,12 @@ I assume here need to have the following parts:
 
 this preprocess have 2 related files, process and the pca
 the other files exist before the merge, now the previous two files contains all of them.
+
+TODO: if I have chance to run this again,the following changes should be done:
+    1, seperate the total num by gestures
+    2, use numba to accerate the tsdf calculation
+    3, seperate tsdf, max_l, mid_p
+    4, maybe add multiprocess or multithread
 """
 import os
 import os.path
@@ -155,9 +161,4 @@ def read_bin(f_name):
 if __name__ == '__main__':
 
     main()
-    joint_pca()
-
-    "after use Matlab process the ground truth data"
-    Use_Matlab = False
-    if Use_Matlab:
-        merge_pca()
+    joint_pca(aug=False)
