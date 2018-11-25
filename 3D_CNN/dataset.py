@@ -57,41 +57,36 @@ class MSRA_Dataset(data.Dataset):
             for sub in range(self.SUBJECTS):
                 data_dir = os.path.join(self.root_path, results[sub])
                 print('Training aug: ' + data_dir)
-                self.__loaddata(data_dir, aug=True)
+                self.__loaddata(data_dir, laug=True)
 
         # load PCA data
+
+        # transfer to torch
+        self.tsdf = torch.from_numpy(self.tsdf)
+        self.ground_truth = torch.from_numpy(self.ground_truth)
         self.max_l = torch.from_numpy(self.max_l)
-        self.__loadPCA()
-        # moni1 = self.ground_truth[3000:3050]
-        # moni2 = self.ground_truth_pca[3000:3050]
-        # moni3 = self.max_l[3000:3050]
-        # moni4 = self.mid_p[3000:3050]
-        # print('d')
+        self.mid_p = torch.from_numpy(self.mid_p)
+
+        if self.size == 'full':
+            self.__loadPCA()
 
     def __getitem__(self, index):
         """return index data"""
 
-        gt = torch.from_numpy(self.ground_truth[index])
-        gpca = torch.from_numpy(self.ground_truth_pca[index])
-        # ml = torch.FloatTensor([self.max_l[index]])
-        ml = self.max_l[index]
-        mp = torch.from_numpy(self.mid_p[index])
-        tx = torch.from_numpy(self.tsdf[index, 0])
-        ty = torch.from_numpy(self.tsdf[index, 1])
-        tz = torch.from_numpy(self.tsdf[index, 2])
+        if self.size == 'full':
+            tt_data = [self.tsdf[index, :, :, :, :], self.ground_truth[index, :],
+                       self.max_l[index], self.mid_p[index, :], slef.ground_truth_pca[index, :]]
+        else:
+            tt_data = [self.tsdf[index, :, :, :, :], self.ground_truth[index, :],
+                       self.max_l[index], self.mid_p[index, :]]
 
-        ground_truth = [gt, gpca]
-        volume_arg = [ml, mp]
-
-        # self.tsdf[index, :, :, :, :],
-        # , self.tsdf[index, :, :, :, :]
-        return tx, ty, tz, ground_truth, volume_arg
+        return tt_data
 
     def __len__(self):
         """to get all data number"""
         return self.tsdf.shape[0]
 
-    def __loaddata(self, data_dir, aug=False):
+    def __loaddata(self, data_dir, laug=False):
         "load data from preprocess files"
 
         if aug:
@@ -119,7 +114,7 @@ class MSRA_Dataset(data.Dataset):
             self.end_index = self.end_index + tsdf.shape[0]
 
             self.tsdf[(self.start_index-1):self.end_index, :, :, :, :] = tsdf
-            self.ground_truth[(self.start_index-1):self.end_index, :] = ground_truth
+            self.ground_truth[(self.start_index-1)                              :self.end_index, :] = ground_truth
             self.max_l[(self.start_index-1):self.end_index] = max_l
             self.mid_p[(self.start_index-1):self.end_index, :] = mid_p
 
@@ -143,7 +138,11 @@ class MSRA_Dataset(data.Dataset):
 
     def __loadPCA(self):
 
-        files = os.listdir('./PCA')
+        all_f = os.listdir('./PCA')
+        if self.AUG:
+            files = all_f[:9]
+        else:
+            files = all_f[9:]
         data = np.load(os.path.join('./PCA', files[self.test_idx]))
 
         self.PCA_mean = data['pca_mean'].astype(np.float32)
