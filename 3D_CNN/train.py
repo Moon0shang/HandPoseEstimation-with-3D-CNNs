@@ -224,7 +224,7 @@ def train(net, extra_data, train_dataloder, criterion, optimizer):
             outputs_nor = torch.addmm(
                 outputs_nor, train_est.data, PCA_coeff)
             output = ((outputs_nor - 0.5) * ml).view(b_size, -1, 3) + mp
-            proportion, err_mean, out_idx = cal_out(output, joint, b_size)
+            proportion, err_mean = cal_out(output, joint, b_size)
 
         elif opt.size == 'small':
             tsdf, joint, max_l, mid_p = data
@@ -264,7 +264,7 @@ def train(net, extra_data, train_dataloder, criterion, optimizer):
             mp = mid_p.unsqueeze(1)
             output = ((train_est.data - 0.5)
                       * ml).view(b_size, -1, 3) + mp
-            proportion, err_mean, out_idx = cal_out(output, joint, b_size)
+            proportion, err_mean = cal_out(output, joint, b_size)
         else:
             print('wrong opt.size which cause wrong data')
             break
@@ -291,8 +291,9 @@ def evaluate(net, extra_data, test_dataloder, criterion, optimizer, store):
     if store:
         try:
             os.mkdir('./output')
-            os.mkdir('./output/all')
-            os.mkdir('./output/good')
+            os.mkdir('./output/joint')
+            os.mkdir('./output/out')
+            # os.mkdir('./output/good')
             print('create output files')
         except:
             print('failed create output files!')
@@ -329,7 +330,7 @@ def evaluate(net, extra_data, test_dataloder, criterion, optimizer, store):
             outputs_nor = torch.addmm(
                 outputs_nor, test_est.data, PCA_coeff)
             output = ((outputs_nor - 0.5) * ml).view(b_size, -1, 3) + mp
-            proportion, err_mean, out_idx = cal_out(output, joint, b_size)
+            proportion, err_mean = cal_out(output, joint, b_size)
         elif opt.size == 'small':
             tsdf, joint, max_l, mid_p = data
             b_size = len(tsdf)
@@ -374,7 +375,7 @@ def evaluate(net, extra_data, test_dataloder, criterion, optimizer, store):
             mp = mid_p.unsqueeze(1)
             output = ((test_est.data - 0.5)
                       * ml).view(b_size, -1, 3) + mp
-            proportion, err_mean, out_idx = cal_out(output, joint, b_size)
+            proportion, err_mean = cal_out(output, joint, b_size)
 
         else:
             print('wrong opt.size which cause wrong data')
@@ -384,15 +385,15 @@ def evaluate(net, extra_data, test_dataloder, criterion, optimizer, store):
         test_wld_err += err_mean
         if store:
             # all outputs
-            outs = np.array(output)
-            joints = np.array(joint1)
-            np.save('./output/all/out-%s.npy' % i, outs)
-            np.save('./output/all/joint-%s.npy' % i, joints)
-            # good ones
-            good_out = outs[out_idx]
-            good_j = joint1[out_idx]
-            np.save('./output/good/out-%s.npy' % i, good_out)
-            np.save('./output/good/joint-%s.npy' % i, good_j)
+            outs = np.array(output.cpu())
+            joints = np.array(joint1.cpu())
+            np.save('./output/out/%s.npy' % i, outs)
+            np.save('./output/joint/%s.npy' % i, joints)
+            # # good ones
+            # good_out = outs[out_idx]
+            # good_j = joint1[out_idx]
+            # np.save('./output/good/out-%s.npy' % i, good_out)
+            # np.save('./output/good/joint-%s.npy' % i, good_j)
         # infromation output
         if i % 20 == 0:
             print('Test:[%4d/%4d]\t' % (i, len(test_dataloder)),
@@ -416,14 +417,14 @@ def cal_out(output, joint, b_size):
     out = torch.zeros(sqrt_sum.size())
     t = opt.threshold
     out[sqrt_sum < t] = 1
-    out_idx = sqrt_sum < 5
+    # out_idx = sqrt_sum < 5
     good = torch.sum(out) / (out.size(1) * b_size)
     # error in world corrdinate system
     err_mean = torch.mean(sqrt_sum, 1).view(-1, 1)
     # err_mean = torch.mul(err_mean, max_l)
     err_mean = torch.sum(err_mean)
 
-    return good * 100, err_mean, out_idx
+    return good * 100, err_mean  # , out_idx
 
 
 if __name__ == "__main__":
