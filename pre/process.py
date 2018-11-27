@@ -228,7 +228,7 @@ class DataProcess(object):
 
         # ground truth augmentation
         # stretch
-        joints = self.ground_truth(-1, 3)
+        joints = self.ground_truth
         joint_stretch = np.dot(joints, S)
 
         # normalize the points to center point
