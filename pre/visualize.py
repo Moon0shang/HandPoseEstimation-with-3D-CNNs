@@ -5,9 +5,9 @@ from mpl_toolkits.mplot3d import Axes3D
 
 def visualize(hand_points):
 
-    x = hand_points[0, :]
-    y = hand_points[1, :]
-    z = hand_points[2, :]
+    x = hand_points[:, 0]
+    y = hand_points[:, 1]
+    z = hand_points[:, 2]
 
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')

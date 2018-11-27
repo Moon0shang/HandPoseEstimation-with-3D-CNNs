@@ -61,6 +61,7 @@ def main():
             os.mkdir(os.path.join(sub_dir, 'Point_Cloud'))
             os.mkdir(os.path.join(sub_dir, 'TSDF'))
             os.mkdir(os.path.join(sub_dir, 'ground_truth'))
+            os.mkdir(os.path.join(sub_dir, 'num'))
         except:
             print('failed create saved files')
 
@@ -69,6 +70,7 @@ def main():
                 os.mkdir(os.path.join(sub_dir, 'Point_Cloud_aug'))
                 os.mkdir(os.path.join(sub_dir, 'TSDF_aug'))
                 os.mkdir(os.path.join(sub_dir, 'ground_truth_aug'))
+                os.mkdir(os.path.join(sub_dir, 'num_aug'))
             except:
                 print('failed create aug files')
 
@@ -120,6 +122,8 @@ def main():
                      tsdf=TSDF, max_l=MAX_L, mid_p=MID_P)
             np.save(os.path.join(sub_dir, 'ground_truth', '%s.npy' % ges),
                     ground_truth)
+            np.save(os.path.join(sub_dir, 'num', '%s.npy' % ges),
+                    bin_num)
 
             if AUG:
                 np.save(os.path.join(sub_dir, 'Point_Cloud_aug', '%s.npy' % ges),
@@ -128,6 +132,8 @@ def main():
                          tsdf=TSDF_AUG, max_l=MAX_L_AUG, mid_p=MID_P_AUG)
                 np.save(os.path.join(sub_dir, 'ground_truth_aug', '%s.npy' % ges),
                         ground_truth_aug)
+                np.save(os.path.join(sub_dir, 'num_aug', '%s.npy' % ges),
+                        bin_num)
 
             print('%s-%s files saved.' % (sub, ges))
         np.save(os.path.join(SAVE_dir, 'data_num-%s.npy' % sub), total_num)
