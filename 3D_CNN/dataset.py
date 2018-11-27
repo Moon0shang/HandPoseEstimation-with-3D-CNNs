@@ -14,11 +14,11 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "1,2"
 
 
 class MSRA_Dataset(data.Dataset):
-    def __init__(self, root_path, train=True, aug=False):  # opt,
+    def __init__(self, root_path, opt, train=True, aug=False):  # opt,
         self.root_path = root_path
         self.train = train
         self.size = 'small'  # opt.size  # load 样本的数量，full /small 'small'  #
-        self.test_idx = 1  # opt.test_index  # 1  #
+        self.test_idx = 2  # opt.test_index  # 1  #
         self.PCA_SZ = 63  # opt.PCA_SZ  # PCA 成分数量大小，默认为 63(int)63  #
         self.AUG = aug
 
@@ -26,10 +26,10 @@ class MSRA_Dataset(data.Dataset):
             self.SUBJECTS = 9
             self.GESTURES = 17
         elif self.size == 'small':
-            self.SUBJECTS = 3
-            self.GESTURES = 17
+            self.SUBJECTS = 4
+            self.GESTURES = 5
 
-        self.total_num = self.__getlength(self.root_path)
+        self.total_num = self.__getlength()
 
         # 初始化 python 数组
         self.tsdf = np.empty([self.total_num, 3, 32, 32, 32], dtype=np.float32)
@@ -62,10 +62,10 @@ class MSRA_Dataset(data.Dataset):
         # load PCA data
 
         # transfer to torch
-        self.tsdf = torch.from_numpy(self.tsdf)
-        self.ground_truth = torch.from_numpy(self.ground_truth)
-        self.max_l = torch.from_numpy(self.max_l)
-        self.mid_p = torch.from_numpy(self.mid_p)
+        # self.tsdf = torch.from_numpy(self.tsdf)
+        # self.ground_truth = torch.from_numpy(self.ground_truth)
+        # self.max_l = torch.from_numpy(self.max_l)
+        # self.mid_p = torch.from_numpy(self.mid_p)
 
         if self.size == 'full':
             self.__loadPCA()
@@ -74,13 +74,9 @@ class MSRA_Dataset(data.Dataset):
         """return index data"""
 
         if self.size == 'full':
-            tt_data = [self.tsdf[index, :, :, :, :], self.ground_truth[index, :],
-                       self.max_l[index], self.mid_p[index, :], self.ground_truth_pca[index, :]]
+            return self.tsdf[index, :, :, :, :], self.ground_truth[index, :], self.max_l[index], self.mid_p[index, :], self.ground_truth_pca[index, :]
         else:
-            tt_data = [self.tsdf[index, :, :, :, :], self.ground_truth[index, :],
-                       self.max_l[index], self.mid_p[index, :]]
-
-        return tt_data
+            return self.tsdf[index, :, :, :, :], self.ground_truth[index, :], self.max_l[index], self.mid_p[index, :]
 
     def __len__(self):
         """to get all data number"""
@@ -108,34 +104,61 @@ class MSRA_Dataset(data.Dataset):
             ground_truth = np.load(os.path.join(
                 data_dir, 'ground_truth', g_file[ges]))
             ground_truth = ground_truth.astype(np.float32)
-            # ground_truth[:, :, 2] = -ground_truth[:, :, 2]
-            # ground_truth = ground_truth.reshape(-1, 63)
-
+            if len(ground_truth.shape) == 3:
+                ground_truth[:, :, 2] = -ground_truth[:, :, 2]
+                g_t = ground_truth.reshape(-1, 63)
             # index order
             self.start_index = self.end_index+1
             self.end_index = self.end_index + tsdf.shape[0]
 
-            self.tsdf[self.start_index:self.end_index, :, :, :, :] = tsdf
-            self.ground_truth[self.start_index:self.end_index,
-                              :] = ground_truth
-            self.max_l[self.start_index:self.end_index] = max_l
-            self.mid_p[self.start_index:self.end_index, :] = mid_p
+            self.tsdf[(self.start_index-1):self.end_index, :, :, :, :] = tsdf
+            self.ground_truth[(self.start_index-1):self.end_index, :] = g_t
+            self.max_l[(self.start_index-1):self.end_index] = max_l
+            self.mid_p[(self.start_index-1):self.end_index, :] = mid_p
 
-    def __getlength(self, data_dir):
+    def __getlength(self):
         "get length of each subject"
-        files = sorted(os.listdir(data_dir))[9:9+self.SUBJECTS]
-
+        results = sorted(os.listdir(self.root_path))[:9]
+        total_num = 0
         if self.train:
-            total_num = 0
-            for idx, name in enumerate(files):
-                if idx != self.test_idx:
-                    num = np.load(os.path.join(data_dir, name))
-                    total_num += num
-            if self.AUG:
-                t_num = np.load(os.path.join(data_dir, files[self.test_idx]))
-                total_num = total_num*2+t_num*2
+            for sub in range(self.SUBJECTS):
+                if sub != self.test_idx:
+                    sub_dir = os.path.join(self.root_path, results[sub], 'num')
+                    ges_files = sorted(os.listdir(sub_dir))
+                    for ges in range(self.GESTURES):
+                        num_dir = os.path.join(sub_dir, ges_files[ges])
+                        nums = np.load(num_dir)
+                        total_num += nums
+                    if self.AUG:
+                        sub_dir = os.path.join(
+                            self.root_path, results[sub], 'num_aug')
+                        ges_files = sorted(os.listdir(sub_dir))
+                        for ges in range(self.GESTURES):
+                            num_dir = os.path.join(sub_dir, ges_files[ges])
+                            nums = np.load(num_dir)
+                            total_num += nums
         else:
-            total_num = np.load(os.path.join(data_dir, files[self.test_idx]))
+            sub_dir = os.path.join(
+                self.root_path, results[self.test_idx], 'num')
+            ges_files = sorted(os.listdir(sub_dir))
+            for ges in range(self.GESTURES):
+                num_dir = os.path.join(sub_dir, ges_files[ges])
+                nums = np.load(num_dir)
+                total_num += nums
+
+        # files = sorted(os.listdir(data_dir))[9:9+self.SUBJECTS]
+
+        # if self.train:
+        #     total_num = 0
+        #     for idx, name in enumerate(files):
+        #         if idx != self.test_idx:
+        #             num = np.load(os.path.join(data_dir, name))
+        #             total_num += num
+        #     if self.AUG:
+        #         t_num = np.load(os.path.join(data_dir, files[self.test_idx]))
+        #         total_num = total_num*2+t_num*2
+        # else:
+        #     total_num = np.load(os.path.join(data_dir, files[self.test_idx]))
 
         return total_num
 

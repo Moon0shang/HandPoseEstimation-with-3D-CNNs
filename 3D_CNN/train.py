@@ -30,7 +30,7 @@ subject_names = sorted(os.listdir('./result/'))[:9]
 
 def init_parser():
     parser = argparse.ArgumentParser(description='3D Hand Pose Estimation')
-    "write my own ones"
+    """write my own ones"""
     parser.add_argument('--threshold', type=int, default=20,
                         help='threshold fro calculate proportion')
     parser.add_argument('--batchSize', type=int, default=16,
@@ -66,10 +66,10 @@ def main():
     torch.manual_seed(opt.manualSeed)
 
     save_dir = os.path.join(opt.save_root_dir, subject_names[opt.test_index])
-    tr_s = []
-    tr_s_w = []
-    te_s = []
-    te_s_e = []
+    # tr_s = []
+    # tr_s_w = []
+    # te_s = []
+    # te_s_e = []
 
     try:
         os.mkdir(opt.save_root_dir)
@@ -83,10 +83,10 @@ def main():
     logging.info('======================================================')
 
     # load data
-    train_data = MSRA_Dataset(root_path='./result',  train=True)
+    train_data = MSRA_Dataset(root_path='./result', opt=opt, train=True)
     train_dataloder = DataLoader(
         train_data, batch_size=opt.batchSize, shuffle=True, num_workers=int(opt.workers))
-    test_data = MSRA_Dataset(root_path='./result',  train=False)
+    test_data = MSRA_Dataset(root_path='./result', opt=opt, train=False)
     test_dataloder = DataLoader(
         test_data, batch_size=opt.batchSize, shuffle=False, num_workers=int(opt.workers))
     print('#Train data:', len(train_data), '#Test data:', len(test_data))
@@ -94,9 +94,9 @@ def main():
 
     # define model,loss and optimizer
     net = DenseNet()
-    if opt.model != '':
-        net.load_state_dict(torch.load(os.path.join(save_dir, opt.model)))
-    'hardware problem'
+    # if opt.model != '':
+    #     net.load_state_dict(torch.load(os.path.join(save_dir, opt.model)))
+    '''hardware problem'''
     net.cuda()
     # print(net)
 
@@ -107,9 +107,9 @@ def main():
         momentum=0.9,
         weight_decay=0.0005)
 
-    if opt.optimizer != '':
-        optimizer.load_state_dict(torch.load(
-            os.path.join(save_dir, opt.optimizer)))
+    # if opt.optimizer != '':
+    #     optimizer.load_state_dict(torch.load(
+    #         os.path.join(save_dir, opt.optimizer)))
     # auto adjust learning rate, divided by 10 after 50 rpoch
     scheduler = lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.1)
 
@@ -126,7 +126,7 @@ def main():
         scheduler.step(epoch)
         # adjest_lr(optimizer, epoch)
         print('======>>>>> Online epoch: #%d/%d, lr=%f, Test: %s <<<<<======' %
-              (epoch, opt.nepoch, scheduler.get_lr()[0], subject_names[opt.test_index]))
+              (epoch+1, opt.nepoch, scheduler.get_lr()[0], subject_names[opt.test_index]))
 
         # train step
         train_mse, train_mse_wld, timer = train(
@@ -148,9 +148,14 @@ def main():
         torch.save(net.state_dict(), '%s/netR_%d.pth' % (save_dir, epoch))
         torch.save(optimizer.state_dict(), '%s/optimizer_%d.pth' %
                    (save_dir, epoch))
+        logging.info('Epoch#%d: train error=%e, train wld error = %f mm,  lr = %f' % (
+            epoch+1, train_mse, train_mse_wld, scheduler.get_lr()[0]))
+
         # evaluation step
+        # store = True
+        store = bool(epoch == opt.nepoch-1)
         test_mse, test_wld_err, timer = evaluate(
-            net, extra_data, train_dataloder, criterion, optimizer)
+            net, extra_data, test_dataloder, criterion, optimizer, store)
 
         # time cost
         timer = timer / test_len
@@ -163,16 +168,17 @@ def main():
         test_wld_err = test_wld_err / test_len
         print('average estimation error in world coordinate system: %f (mm)' %
               (test_wld_err))
-
-        # log
-        logging.info('Epoch#%d: train error=%e, train wld error = %f mm, test error=%e, test wld error = %f mm, lr = %f' % (
-            epoch, train_mse, train_mse_wld, test_mse, test_wld_err, scheduler.get_lr()[0]))
-        tr_s.append(train_mse)
-        tr_s_w.append(train_mse_wld)
-        te_s.append(test_mse)
-        te_s_e.append(test_wld_err)
-        np.savez('./rt.npz', tr_s=tr_s, tr_s_w=tr_s_w,
-                 te_s=te_s, te_s_e=te_s_e)
+        logging.info('Epoch#%d:  test error=%e, test wld error = %f mm, lr = %f' % (
+            epoch+1, test_mse, test_wld_err, scheduler.get_lr()[0]))
+    # log
+    # logging.info('Epoch#%d: train error=%e, train wld error = %f mm, test error=%e, test wld error = %f mm, lr = %f' % (
+    #     epoch, train_mse, train_mse_wld, test_mse, test_wld_err, scheduler.get_lr()[0]))
+    # tr_s.append(train_mse)
+    # tr_s_w.append(train_mse_wld)
+    # te_s.append(test_mse)
+    # te_s_e.append(test_wld_err)
+    # np.savez('./rt.npz', tr_s=tr_s, tr_s_w=tr_s_w,
+    #          te_s=te_s, te_s_e=te_s_e)
 
 
 def train(net, extra_data, train_dataloder, criterion, optimizer):
@@ -183,7 +189,7 @@ def train(net, extra_data, train_dataloder, criterion, optimizer):
     train_mse_wld = 0.0
     start_time = time()
 
-    for i, data in enumerate(tqdm(train_dataloder, 0)):
+    for i, data in enumerate(train_dataloder):
         torch.cuda.synchronize()
         # load datas
         # joint = ground_truth in dataset file, cause the spell is too long
@@ -191,39 +197,44 @@ def train(net, extra_data, train_dataloder, criterion, optimizer):
             [PCA_mean, PCA_coeff] = extra_data
             tsdf, joint, max_l, mid_p, joint_pca = data
             b_size = len(tsdf)
-            tsdf = Variable(tsdf, requires_grad=False).cuda()
-            joint_pca = Variable(joint_pca, requires_grad=False)
+            tsdf, joint = tsdf.cuda(), joint.cuda()
+            max_l, mid_p = max_l.cuda(), mid_p.cuda()
+            train_tsdf = Variable(tsdf, requires_grad=False)
+            joint_pca = joint_pca.cuda()
+            train_joint_pca = Variable(joint_pca, requires_grad=False)
             # 3.1.2 compute output
             optimizer.zero_grad()
-            estimation = net(tsdf)
-            loss = criterion(estimation, joint_pca)*opt.PCA_SZ
+            train_est = net(train_tsdf)
+            train_loss = criterion(train_est, train_joint_pca)*opt.PCA_SZ
 
             # 3.1.3 compute gradient and do SGD step
-            loss.backward()
+            train_loss.backward()
             optimizer.step()
             torch.cuda.synchronize()
 
             # 3.1.4 update training error
-            train_mse = train_mse + loss.data[0] * b_size
+            train_mse = train_mse + loss.item()*b_size
 
             # 3.1.5 compute error in world cs
             ml = max_l.unsqueeze(1)
             mp = mid_p.unsqueeze(1)
             outputs_nor = PCA_mean.expand(
-                estimation.data.size(0), PCA_mean.size(1))
-            # addmm: out = outputs_nor+estimation.data*train_data.PCA_coeff
+                train_est.data.size(0), PCA_mean.size(1))
+            # addmm: out = outputs_xyz+estimation.data*train_data.PCA_coeff
             outputs_nor = torch.addmm(
-                outputs_nor, estimation.data.cpu(), PCA_coeff)
+                outputs_nor, train_est.data, PCA_coeff)
             output = ((outputs_nor - 0.5) * ml).view(b_size, -1, 3) + mp
-            proportion, err_mean = cal_out(output, joint, b_size)
+            proportion, err_mean, out_idx = cal_out(output, joint, b_size)
+
         elif opt.size == 'small':
             tsdf, joint, max_l, mid_p = data
             b_size = len(tsdf)
-            tsdf = Variable(tsdf, requires_grad=False).cuda()
+            tsdf, joint = tsdf.cuda(), joint.cuda()
+            train_tsdf = Variable(tsdf, requires_grad=False)
 
             # joint transfer and normalization
             joint1 = joint.view(b_size, -1, 3)
-            joint_nor = torch.FloatTensor(joint1.size())
+            joint_nor = torch.FloatTensor(joint1.size()).cuda()
             max_l, mid_p = max_l.cuda(), mid_p.cuda()
             for b in range(b_size):
                 joint_nor[b] = (joint1[b] - mid_p[b]) / max_l[b] + 0.5
@@ -231,50 +242,60 @@ def train(net, extra_data, train_dataloder, criterion, optimizer):
             joint_nor[joint_nor < 0] = 0
             joint_nor[joint_nor > 1] = 1
             joint_nor = joint_nor.view(b_size, -1)
-            joint_nor = Variable(joint_nor, requires_grad=False).cuda()
+            train_joint_nor = Variable(joint_nor, requires_grad=False)
 
             # compute output
             optimizer.zero_grad()
-            estimation = net(tsdf)
-            loss = criterion(estimation, joint_nor) * opt.PCA_SZ
+            train_est = net(train_tsdf)
+            # nan_out = np.any(np.isnan(train_est.data))
+            # nan_j = np.any(np.isnan(joint_nor))
+            train_loss = criterion(train_est, train_joint_nor) * opt.PCA_SZ
 
             # compute gradient and do SGD step
-            loss.backward()
+            train_loss.backward()
             optimizer.step()
             torch.cuda.synchronize()
 
             # update training error
-            train_mse = train_mse + loss.item() * b_size
+            train_mse = train_mse + train_loss.item() * b_size
 
             # calculate error threshod
             ml = max_l.unsqueeze(1)
             mp = mid_p.unsqueeze(1)
-            output = ((estimation.data - 0.5)
+            output = ((train_est.data - 0.5)
                       * ml).view(b_size, -1, 3) + mp
-            proportion, err_mean = cal_out(output, joint, b_size)
+            proportion, err_mean, out_idx = cal_out(output, joint, b_size)
         else:
             print('wrong opt.size which cause wrong data')
             break
 
         # infromation output
-        if i % 10 == 0:
-            print('Train:[%d/%d]\t' % (i, len(train_dataloder)),
-                  'Loss:%.4f\t' % loss.item(),
+        if i % 20 == 0:
+            print('Train:[%4d/%4d]\t' % (i, len(train_dataloder)),
+                  'Loss:%.4f\t' % train_loss.item(),
                   'Proportion:%.3f' % proportion)
-
+        train_mse_wld += err_mean
     torch.cuda.synchronize()
     end_time = time()
     timer = end_time - start_time
 
-    return train_mse, err_mean, timer
+    return train_mse, train_mse_wld, timer
 
 
-def evaluate(net, extra_data, test_dataloder, criterion, optimizer):
+def evaluate(net, extra_data, test_dataloder, criterion, optimizer, store):
 
     torch.cuda.synchronize()
     net.eval()
     test_mse = 0.0
     test_wld_err = 0.0
+    if store:
+        try:
+            os.mkdir('./output')
+            os.mkdir('./output/all')
+            os.mkdir('./output/good')
+            print('create output files')
+        except:
+            print('failed create output files!')
     start_time = time()
 
     for i, data in enumerate(test_dataloder):
@@ -284,39 +305,41 @@ def evaluate(net, extra_data, test_dataloder, criterion, optimizer):
             [PCA_mean, PCA_coeff] = extra_data
             tsdf, joint, max_l, mid_p, joint_pca = data
             b_size = len(tsdf)
-            tsdf = Variable(tsdf, requires_grad=False).cuda()
+            tsdf, joint = tsdf.cuda(), joint.cuda()
+            max_l, mid_p = max_l.cuda(), mid_p.cuda()
+            test_tsdf = Variable(tsdf, requires_grad=False)
+            joint_pca = joint_pca.cuda()
             joint_pca = Variable(joint_pca, requires_grad=False)
             # 3.1.2 compute output
             optimizer.zero_grad()
-            estimation = net(tsdf)
-            loss = criterion(estimation, joint_pca)*opt.PCA_SZ
+            test_est = net(test_tsdf)
+            test_loss = criterion(test_est, joint_pca)*opt.PCA_SZ
 
-            # 3.1.3 compute gradient and do SGD step
-            loss.backward()
-            optimizer.step()
             torch.cuda.synchronize()
 
             # 3.1.4 update training error
-            train_mse = train_mse + loss.data[0] * b_size
+            test_mse = test_mse + test_loss.item()*b_size
 
             # 3.1.5 compute error in world cs
             ml = max_l.unsqueeze(1)
             mp = mid_p.unsqueeze(1)
             outputs_nor = PCA_mean.expand(
-                estimation.data.size(0), PCA_mean.size(1))
-            # addmm: out = outputs_nor+estimation.data*train_data.PCA_coeff
+                test_est.data.size(0), PCA_mean.size(1))
+            # addmm: out = outputs_xyz+estimation.data*train_data.PCA_coeff
             outputs_nor = torch.addmm(
-                outputs_nor, estimation.data.cpu(), PCA_coeff)
+                outputs_nor, test_est.data, PCA_coeff)
             output = ((outputs_nor - 0.5) * ml).view(b_size, -1, 3) + mp
-            proportion, err_mean = cal_out(output, joint, b_size)
+            proportion, err_mean, out_idx = cal_out(output, joint, b_size)
         elif opt.size == 'small':
             tsdf, joint, max_l, mid_p = data
             b_size = len(tsdf)
-            tsdf = Variable(tsdf, requires_grad=False).cuda()
+            tsdf, joint = tsdf.cuda(), joint.cuda()
+            test_tsdf = Variable(tsdf, requires_grad=False)
 
             # joint transfer and normalization
             joint1 = joint.view(b_size, -1, 3)
-            joint_nor = torch.FloatTensor(joint1.size())
+            joint_nor = torch.FloatTensor(joint1.size()).cuda()
+
             max_l, mid_p = max_l.cuda(), mid_p.cuda()
             for b in range(b_size):
                 joint_nor[b] = (joint1[b] - mid_p[b]) / max_l[b] + 0.5
@@ -324,35 +347,56 @@ def evaluate(net, extra_data, test_dataloder, criterion, optimizer):
             joint_nor[joint_nor < 0] = 0
             joint_nor[joint_nor > 1] = 1
             joint_nor = joint_nor.view(b_size, -1)
-            joint_nor = Variable(joint_nor, requires_grad=False).cuda()
+            test_joint_nor = Variable(joint_nor, requires_grad=False)
 
             # compute output
             optimizer.zero_grad()
-            estimation = net(tsdf)
-            loss = criterion(estimation, joint_nor) * opt.PCA_SZ
+            # nan_in = np.any(np.isnan(tsdf.data))
+            # inf_in = np.any(np.isinf(tsdf.data))
+            test_est = net(test_tsdf)
+            # nan_out = np.any(np.isnan(estimation.data))
+            # nan_j = np.any(np.isnan(joint_nor))
+            # inf_out = np.any(np.isinf(estimation.data))
+            # inf_j = np.any(np.isinf(joint_nor))
+            test_loss = criterion(test_est, test_joint_nor) * opt.PCA_SZ
 
             # compute gradient and do SGD step
-            loss.backward()
-            optimizer.step()
+            # test_loss.backward()
+            # optimizer.step()
             torch.cuda.synchronize()
 
             # update training error
-            train_mse = train_mse + loss.item() * b_size
+            test_mse = test_mse + test_loss.item() * b_size
 
             # calculate error threshod
             ml = max_l.unsqueeze(1)
+
             mp = mid_p.unsqueeze(1)
-            output = ((estimation.data - 0.5)
+            output = ((test_est.data - 0.5)
                       * ml).view(b_size, -1, 3) + mp
-            proportion, err_mean = cal_out(output, joint, b_size)
+            proportion, err_mean, out_idx = cal_out(output, joint, b_size)
+
         else:
             print('wrong opt.size which cause wrong data')
             break
 
+        # record datas
+        test_wld_err += err_mean
+        if store:
+            # all outputs
+            outs = np.array(output)
+            joints = np.array(joint1)
+            np.save('./output/all/out-%s.npy' % i, outs)
+            np.save('./output/all/joint-%s.npy' % i, joints)
+            # good ones
+            good_out = outs[out_idx]
+            good_j = joint1[out_idx]
+            np.save('./output/good/out-%s.npy' % i, good_out)
+            np.save('./output/good/joint-%s.npy' % i, good_j)
         # infromation output
-        if i % 10 == 0:
-            print('Train:[%d/%d]\t' % (i, len(test_dataloder)),
-                  'Loss:%.4f\t' % loss.item(),
+        if i % 20 == 0:
+            print('Test:[%4d/%4d]\t' % (i, len(test_dataloder)),
+                  'Loss:%.4f\t' % test_loss.item(),
                   'Proportion:%.3f' % proportion)
 
     torch.cuda.synchronize()
@@ -371,17 +415,15 @@ def cal_out(output, joint, b_size):
     # calculate propotion
     out = torch.zeros(sqrt_sum.size())
     t = opt.threshold
-    out[sqr_sum < t] = 1
+    out[sqrt_sum < t] = 1
+    out_idx = sqrt_sum < 5
     good = torch.sum(out) / (out.size(1) * b_size)
     # error in world corrdinate system
     err_mean = torch.mean(sqrt_sum, 1).view(-1, 1)
+    # err_mean = torch.mul(err_mean, max_l)
     err_mean = torch.sum(err_mean)
 
-    return good * 100, err_mean
-
-
-def visualize():
-    pass
+    return good * 100, err_mean, out_idx
 
 
 if __name__ == "__main__":
