@@ -9,6 +9,6 @@ so better not clone it simply, maybe you can join me complete this project.
 
 
 TODO:
-* 3D data augmentation
+* ~~3D data augmentation~~
 * hand surface completion
-* metrics evaluation
+* ~~metrics evaluation~~
