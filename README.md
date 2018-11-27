@@ -4,12 +4,15 @@
 
 **!!! if you meet any bugs, please tell me or fix it!!!**
 
+I use VS Code write this project, so if there are any directory problems, please change the dirs.
+
 it's a after-classe homework kind need to be done
 
 
-**it's not done yet!!!**
-so better not clone it simply, maybe you can join me complete this project.
+~~**it's not done yet!!!**
+so better not clone it simply, maybe you can join me complete this project.~~
 
+it's part done, one moduel still needed.
 
 TODO:
 * ~~3D data augmentation~~
