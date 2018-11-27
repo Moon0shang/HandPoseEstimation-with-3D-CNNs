@@ -212,11 +212,11 @@ class DataProcess(object):
         S = np.diag(stretch)
 
         # rotate factor
-        rot_xy = np.random.uniform(-np.pi / 18, np.pi / 18)
-        rot_z = np.random.uniform(-np.pi / 6, np.pi / 6)
+        rot_xy = np.random.randint(-30, 30)
+        rot_z = np.random.randint(-30, 30)
         # x, y matrix
-        xy_c = np.cos(rot_xy)
-        xy_s = np.sin(rot_xy)
+        xy_c = np.cos(np.pi*rot_xy/180)
+        xy_s = np.sin(np.pi*rot_xy/180)
         R_x = np.array([[1, 0, 0], [0, xy_c, xy_s], [0, -xy_s, xy_c]])
         R_y = np.array([[xy_c, 0, -xy_s], [0, 1, 0], [xy_s, 0, xy_c]])
         z_c = np.cos(rot_z)
@@ -227,13 +227,33 @@ class DataProcess(object):
         R = np.dot(R, R_z)
 
         # ground truth augmentation
+        # stretch
         joints = self.ground_truth(-1, 3)
-        ground_truth_aug = np.dot(joints, S)
-        ground_truth_aug = np.dot(ground_truth_aug, R)
-        ground_truth_aug = ground_truth_aug.reshape(-1)
+        joint_stretch = np.dot(joints, S)
+
+        # normalize the points to center point
+        center_mean = np.mean(joint_stretch, axis=2)
+        center_point = np.empty(
+            [center_mean.shape[0], center_mean.shape[1], 3])
+        center_point[:, :, 0] = center_mean
+        center_point[:, :, 1] = center_mean
+        center_point[:, :, 2] = center_mean
+        coor_nor = joint_stretch - center_point
+        # rotate
+        joint_rot = np.dot(coor_nor, R)
+        # unnormalize the points to coordinate system
+        joint_coor = joint_rot + center_point
+        ground_truth_aug = joint_coor.reshape(-1, 63)
 
         # point cloud augmentation
-        point_clouds_aug = np.dot(point_clouds, S)
-        point_clouds_aug = np.dot(point_clouds_aug, R)
+        pc_stretch = np.dot(point_clouds, S)
+        pc_mean = np.mean(pc_stretch, axis=2)
+        pc_center = np.empty([pc_mean.shape[0], pc_mean.shape[1], 3])
+        pc_center[:, :, 0] = pc_mean
+        pc_center[:, :, 1] = pc_mean
+        pc_center[:, :, 2] = pc_mean
+        pc_nor = pc_stretch-pc_center
+        pc_rot = np.dot(pc_nor, R)
+        point_clouds_aug = pc_rot+pc_center
 
         return point_clouds_aug, ground_truth_aug
