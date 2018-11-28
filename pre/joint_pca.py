@@ -67,6 +67,7 @@ def nor_joint(subjects, gestures, test, fs=''):
             max_l = data['max_l']
             mid_p = data['mid_p']
 
+            gt_nor = np.empty(ground_truth.shape)
             for i in len(ground_truth):
                 gt_nor = (ground_truth[i]-mid_p[i])/max_l[i]+0.5
 
